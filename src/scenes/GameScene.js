@@ -215,7 +215,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Title with drop-in animation
-        const title = this.add.text(cx, cy - 100, '🚚 FLYTTSMART 🏠', {
+        const title = this.add.text(cx, cy - 130, '🚚 FLYTTSMART 🏠', {
             fontSize: '52px',
             fill: '#00AEEF',
             fontFamily: 'Fredoka One',
@@ -230,7 +230,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Tagline
-        const tagline = this.add.text(cx, cy - 40, 'Flytta möblerna — Undvik fåren!', {
+        const tagline = this.add.text(cx, cy - 70, 'Flytta möblerna — Undvik fåren!', {
             fontSize: '22px',
             fill: '#f1c40f',
             fontFamily: 'Fredoka One'
@@ -259,7 +259,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Start button with pulse
-        const startBtn = this.add.text(cx, cy + 70, '▶  STARTA SPELET', {
+        const startBtn = this.add.text(cx, cy + 60, '▶  STARTA SPELET', {
             fontSize: '30px',
             fill: '#fff',
             backgroundColor: '#27ae60',
@@ -285,7 +285,7 @@ export class GameScene extends Phaser.Scene {
         startBtn.on('pointerout', () => startBtn.setStyle({ backgroundColor: '#27ae60' }));
 
         // Leaderboard header
-        const lbTitle = this.add.text(cx, cy + 130, '🏆 TOPPLISTA', {
+        const lbTitle = this.add.text(cx, cy + 120, '🏆 TOPPLISTA', {
             fontSize: '22px', fill: '#f1c40f', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setAlpha(0);
 
@@ -296,7 +296,7 @@ export class GameScene extends Phaser.Scene {
 
         // Load leaderboard from Firebase
         const lbTexts = [];
-        const lbLoading = this.add.text(cx, cy + 160, 'Laddar...', {
+        const lbLoading = this.add.text(cx, cy + 150, 'Laddar...', {
             fontSize: '16px', fill: '#888', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setAlpha(0);
 
@@ -316,7 +316,7 @@ export class GameScene extends Phaser.Scene {
                 scores.sort((a, b) => b.score - a.score);
 
                 if (scores.length === 0) {
-                    const noScores = this.add.text(cx, cy + 160, 'Inga poäng ännu!', {
+                    const noScores = this.add.text(cx, cy + 150, 'Inga poäng ännu!', {
                         fontSize: '16px', fill: '#888', fontFamily: 'Fredoka One'
                     }).setOrigin(0.5);
                     lbTexts.push(noScores);
@@ -326,7 +326,7 @@ export class GameScene extends Phaser.Scene {
                     scores.forEach((entry, i) => {
                         const medal = medals[i] || '  ';
                         const color = i === 0 ? '#f1c40f' : i < 3 ? '#bdc3c7' : '#fff';
-                        const txt = this.add.text(cx, cy + 158 + (i * 24),
+                        const txt = this.add.text(cx, cy + 148 + (i * 24),
                             `${medal} ${entry.name}  ${entry.score}p  (Bana ${entry.level || '?'})`, {
                             fontSize: '16px', fill: color, fontFamily: 'Fredoka One'
                         }).setOrigin(0.5);
