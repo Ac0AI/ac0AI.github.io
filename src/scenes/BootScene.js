@@ -80,6 +80,13 @@ export class BootScene extends Phaser.Scene {
         makeEmoji('bookshelf', '📚', 52);
         makeEmoji('chair', '🪑', 48);
         makeEmoji('fridge', '🧊', 48);
+        makeEmoji('console', '🎮', 48);
+        makeEmoji('freezer', '❄️', 52);
+        makeEmoji('cd', '💿', 44);
+        makeEmoji('radio', '📻', 48);
+        makeEmoji('guitar', '🎸', 52);
+        makeEmoji('clock', '🕰️', 48);
+        makeEmoji('washer', '🫧', 52);
 
         // Truck & House
         makeEmoji('truck', '🚚', 120);

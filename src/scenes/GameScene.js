@@ -596,7 +596,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnOneFurniture() {
-        const types = ['sofa', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge'];
+        const types = ['sofa', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
         const rx = Phaser.Math.FloatBetween(-1, 2);
         const ry = Phaser.Math.FloatBetween(5, 7);
