@@ -7,6 +7,9 @@ export class BootScene extends Phaser.Scene {
         this.load.image('sprites', 'assets/sprites.png');
         this.load.image('ground_bg', 'assets/ground_bg.png');
 
+        // Background music
+        this.load.audio('bgmusic', 'assets/fs.mp3');
+
 
         // Level music
         this.load.audio('level1', 'assets/Level 1.mp3');

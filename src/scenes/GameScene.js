@@ -56,16 +56,18 @@ export class GameScene extends Phaser.Scene {
         this.createUI();
 
 
-        // Level Music and Sound Effects
-        this.levelMusic = [
-            this.sound.add('level1', { loop: true, volume: 0.5 }),
-            this.sound.add('level2', { loop: true, volume: 0.5 }),
-            this.sound.add('level3', { loop: true, volume: 0.5 }),
-            this.sound.add('level4', { loop: true, volume: 0.5 }),
-            this.sound.add('level5', { loop: true, volume: 0.5 })
+        // Background music (plays always)
+        this.bgMusic = this.sound.add('bgmusic', { loop: true, volume: 0.4 });
+
+        // Level complete jingles (one-shot sounds)
+        this.levelJingles = [
+            this.sound.add('level1', { volume: 0.8 }),
+            this.sound.add('level2', { volume: 0.8 }),
+            this.sound.add('level3', { volume: 0.8 }),
+            this.sound.add('level4', { volume: 0.8 }),
+            this.sound.add('level5', { volume: 0.8 })
         ];
         this.roadkillSound = this.sound.add('roadkill', { volume: 0.7 });
-        this.currentMusic = null;
 
         // Show Start Screen
         this.createStartScreen();
@@ -102,8 +104,10 @@ export class GameScene extends Phaser.Scene {
         this.game.canvas.focus();
         window.focus();
 
-        // Start level music
-        this.playLevelMusic(this.currentLevel);
+        // Start background music
+        if (this.bgMusic && !this.bgMusic.isPlaying) {
+            this.bgMusic.play();
+        }
 
         this.spawnFurniture();
 
@@ -318,9 +322,9 @@ export class GameScene extends Phaser.Scene {
             this.roadkillSound.play();
         }
 
-        // Stop music
-        if (this.currentMusic) {
-            this.currentMusic.stop();
+        // Stop background music
+        if (this.bgMusic) {
+            this.bgMusic.stop();
         }
 
         this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 - 40, 'GAME OVER\n' + reason, { fontSize: '48px', fill: '#ff0000', fontFamily: 'Fredoka One', stroke: '#fff', strokeThickness: 4, align: 'center' }).setOrigin(0.5).setDepth(2000);
@@ -506,6 +510,9 @@ export class GameScene extends Phaser.Scene {
             // Victory!
             this.victory();
         } else {
+            // Play level complete jingle
+            this.playLevelJingle(this.currentLevel);
+
             // Next level
             this.pauseGame();
             this.createLevelTransitionScreen();
@@ -630,17 +637,11 @@ export class GameScene extends Phaser.Scene {
         restart.on('pointerdown', () => this.restartGame());
     }
 
-    playLevelMusic(level) {
-        // Stop current music if playing
-        if (this.currentMusic) {
-            this.currentMusic.stop();
-        }
-
-        // Play new level music
-        const musicIndex = level - 1; // levels 1-5 map to indices 0-4
-        if (this.levelMusic && this.levelMusic[musicIndex]) {
-            this.currentMusic = this.levelMusic[musicIndex];
-            this.currentMusic.play();
+    playLevelJingle(level) {
+        // Play level complete jingle
+        const jingleIndex = level - 1;
+        if (this.levelJingles && this.levelJingles[jingleIndex]) {
+            this.levelJingles[jingleIndex].play();
         }
     }
 
