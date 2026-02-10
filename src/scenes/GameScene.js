@@ -356,9 +356,9 @@ export class GameScene extends Phaser.Scene {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
 
-        // Truck bottom-left (more inward)
-        const truckX = 160;
-        const truckY = h - 100;
+        // Truck bottom-left, closer to road
+        const truckX = 220;
+        const truckY = h - 140;
         this.truck = this.add.image(truckX, truckY, 'truck');
         this.truck.setOrigin(0.5, 0.85);
         this.truck.setDepth(truckY);
