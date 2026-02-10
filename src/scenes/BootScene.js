@@ -92,6 +92,11 @@ export class BootScene extends Phaser.Scene {
         makeEmoji('truck', '🚚', 120);
         makeEmoji('house', '🏠', 140);
 
+        // Power-ups
+        makeEmoji('powerup_coffee', '☕', 40);
+        makeEmoji('powerup_clock', '⏰', 40);
+        makeEmoji('powerup_shield', '🛡️', 40);
+
 
         // Environment
         const tileG = this.make.graphics({ x: 0, y: 0, add: false });

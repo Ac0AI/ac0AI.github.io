@@ -25,6 +25,18 @@ export class GameScene extends Phaser.Scene {
         this.highscore = parseInt(localStorage.getItem('flyttsmart_highscore')) || 0;
         this.initialsSubmitted = false;
         this.playerInitials = '';
+
+        // Power-ups
+        this.hasShield = false;
+        this.speedMultiplier = 1;
+
+        // Points per furniture type
+        this.pointValues = {
+            box: 1, cd: 1, plant: 2,
+            lamp: 2, chair: 2, clock: 2, radio: 2,
+            sofa: 3, bookshelf: 3, washer: 3, freezer: 3,
+            tv: 5, console: 5, fridge: 4, guitar: 4
+        };
     }
 
     create() {
@@ -53,6 +65,15 @@ export class GameScene extends Phaser.Scene {
         this.time.addEvent({
             delay: 2000,
             callback: this.spawnSheep,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Power-up Group
+        this.powerUpGroup = this.add.group();
+        this.time.addEvent({
+            delay: 12000,
+            callback: this.spawnPowerUp,
             callbackScope: this,
             loop: true
         });
@@ -280,11 +301,35 @@ export class GameScene extends Phaser.Scene {
             const dy = targetY - sy;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            sheep.vx = (dx / dist) * 0.05; // speed
+            sheep.vx = (dx / dist) * 0.05;
             sheep.vy = (dy / dist) * 0.05;
+            sheep.isBoss = false;
 
             this.sheepGroup.add(sheep);
             this.physics.add.existing(sheep);
+        }
+
+        // Boss sheep on level 5 (10% chance per spawn)
+        if (this.currentLevel >= 5 && Phaser.Math.Between(1, 10) === 1) {
+            const edge = Phaser.Math.Between(0, 3);
+            let bx, by;
+            switch (edge) {
+                case 0: bx = Phaser.Math.Between(-5, 15); by = -5; break;
+                case 1: bx = Phaser.Math.Between(-5, 15); by = 15; break;
+                case 2: bx = -5; by = Phaser.Math.Between(-5, 15); break;
+                case 3: bx = 15; by = Phaser.Math.Between(-5, 15); break;
+            }
+            const bpos = this.isoToScreen(bx, by);
+            const boss = this.add.sprite(bpos.x, bpos.y, 'sheep');
+            boss.isoX = bx;
+            boss.isoY = by;
+            boss.setScale(1.2);
+            boss.setTint(0xff4444);
+            boss.isBoss = true;
+            boss.vx = 0;
+            boss.vy = 0;
+            this.sheepGroup.add(boss);
+            this.physics.add.existing(boss);
         }
     }
 
@@ -292,6 +337,22 @@ export class GameScene extends Phaser.Scene {
         this.sheepGroup.children.iterate(sheep => {
             if (!sheep) return;
 
+            // Sheep AI: chasing behavior on level 3+
+            if (this.currentLevel >= 3 && !sheep.isBoss) {
+                const chaseStrength = this.currentLevel >= 4 ? 0.0008 : 0.0004;
+                const toDx = this.player.isoX - sheep.isoX;
+                const toDy = this.player.isoY - sheep.isoY;
+                const toDist = Math.sqrt(toDx * toDx + toDy * toDy) || 1;
+                sheep.vx += (toDx / toDist) * chaseStrength;
+                sheep.vy += (toDy / toDist) * chaseStrength;
+            }
+            if (sheep.isBoss) {
+                const toDx = this.player.isoX - sheep.isoX;
+                const toDy = this.player.isoY - sheep.isoY;
+                const toDist = Math.sqrt(toDx * toDx + toDy * toDy) || 1;
+                sheep.vx = (toDx / toDist) * 0.04;
+                sheep.vy = (toDy / toDist) * 0.04;
+            }
             sheep.isoX += sheep.vx;
             sheep.isoY += sheep.vy;
 
@@ -306,14 +367,12 @@ export class GameScene extends Phaser.Scene {
                 return;
             }
 
-            // Check collision with player (unless grace period)
-            if (!this.hasGracePeriod) {
-                // Use isometric distance - more reliable than screen pixels
+            // Check collision with player (unless grace period or shield)
+            if (!this.hasGracePeriod && !this.hasShield) {
                 const isoDist = Phaser.Math.Distance.Between(
                     this.player.isoX, this.player.isoY,
                     sheep.isoX, sheep.isoY
                 );
-                // Collision radius: tighter to avoid ghost hits
                 if (isoDist < 1.2) {
                     this.gameOver("KROCKAD AV FÅR!");
                 }
@@ -498,11 +557,100 @@ export class GameScene extends Phaser.Scene {
 
         this.handleMovement();
         this.updateSheep(delta);
+        this.updatePowerUps();
         this.updateDepthSorting();
     }
 
+    // === POWER-UPS ===
+    spawnPowerUp() {
+        const types = ['powerup_coffee', 'powerup_clock', 'powerup_shield'];
+        const type = types[Phaser.Math.Between(0, types.length - 1)];
+        const rx = Phaser.Math.FloatBetween(0, 3);
+        const ry = Phaser.Math.FloatBetween(3, 7);
+        const pos = this.isoToScreen(rx, ry);
+
+        const pu = this.add.sprite(pos.x, pos.y, type);
+        pu.setOrigin(0.5, 0.75);
+        pu.isoX = rx;
+        pu.isoY = ry;
+        pu.powerUpType = type;
+        pu.setDepth(pos.y);
+
+        // Glowing pulse animation
+        this.tweens.add({
+            targets: pu, scaleX: 1.3, scaleY: 1.3,
+            yoyo: true, repeat: -1, duration: 500, ease: 'Sine.easeInOut'
+        });
+
+        if (!this.powerUpGroup) {
+            this.powerUpGroup = this.add.group();
+        }
+        this.powerUpGroup.add(pu);
+
+        // Auto-remove after 8 seconds
+        this.time.delayedCall(8000, () => {
+            if (pu && pu.active) {
+                this.tweens.add({
+                    targets: pu, alpha: 0, duration: 500,
+                    onComplete: () => pu.destroy()
+                });
+            }
+        });
+    }
+
+    updatePowerUps() {
+        if (!this.powerUpGroup) return;
+
+        this.powerUpGroup.children.iterate(pu => {
+            if (!pu || !pu.active) return;
+
+            const dist = Phaser.Math.Distance.Between(
+                this.player.isoX, this.player.isoY, pu.isoX, pu.isoY
+            );
+
+            if (dist < 1.5) {
+                this.activatePowerUp(pu.powerUpType);
+                pu.destroy();
+            }
+        });
+    }
+
+    activatePowerUp(type) {
+        const cx = this.cameras.main.width / 2;
+        let label = '';
+
+        if (type === 'powerup_coffee') {
+            label = '☕ TURBO!';
+            this.speedMultiplier = 2;
+            this.time.delayedCall(5000, () => { this.speedMultiplier = 1; });
+        } else if (type === 'powerup_clock') {
+            label = '⏰ +10 SEK!';
+            this.timeLeft = Math.min(this.timeLeft + 10, 99);
+        } else if (type === 'powerup_shield') {
+            label = '🛡️ SKÖLD!';
+            this.hasShield = true;
+            // Visual shield indicator
+            if (this.shieldGlow) this.shieldGlow.destroy();
+            this.shieldGlow = this.add.circle(this.player.x, this.player.y, 30, 0x3498db, 0.3).setDepth(this.player.depth - 1);
+            this.time.delayedCall(5000, () => {
+                this.hasShield = false;
+                if (this.shieldGlow) { this.shieldGlow.destroy(); this.shieldGlow = null; }
+            });
+        }
+
+        // Show power-up text
+        const puText = this.add.text(cx, 100, label, {
+            fontSize: '36px', fill: '#f1c40f', fontFamily: 'Fredoka One',
+            stroke: '#000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(3000);
+        this.tweens.add({
+            targets: puText, y: 60, alpha: 0,
+            duration: 1500, onComplete: () => puText.destroy()
+        });
+    }
+
     handleMovement() {
-        const speed = 0.10;
+        const speed = 0.10 * this.speedMultiplier;
         let dx = 0;
         let dy = 0;
 
@@ -548,6 +696,12 @@ export class GameScene extends Phaser.Scene {
                 this.carriedItem.y = this.player.y - 60;
                 this.carriedItem.setDepth(this.player.depth + 1);
             }
+
+            // Update shield glow position
+            if (this.shieldGlow) {
+                this.shieldGlow.x = this.player.x;
+                this.shieldGlow.y = this.player.y;
+            }
         }
     }
 
@@ -557,9 +711,20 @@ export class GameScene extends Phaser.Scene {
         if (this.carriedItem) {
             const distToHouse = Phaser.Math.Distance.Between(this.player.isoX, this.player.isoY, this.houseZone.x, this.houseZone.y);
             if (distToHouse < 2.5) {
-                this.score += 10;
+                const points = this.pointValues[this.carriedItem.itemType] || 1;
+                this.score += points;
                 this.itemsDelivered++;
                 this.updateUI();
+
+                // Show points earned
+                const ptText = this.add.text(this.player.x, this.player.y - 80, `+${points}`, {
+                    fontSize: '28px', fill: '#2ecc71', fontFamily: 'Fredoka One',
+                    stroke: '#000', strokeThickness: 2
+                }).setOrigin(0.5).setDepth(3000);
+                this.tweens.add({
+                    targets: ptText, y: ptText.y - 40, alpha: 0,
+                    duration: 800, onComplete: () => ptText.destroy()
+                });
 
                 // Remove the delivered item
                 this.carriedItem.destroy();
