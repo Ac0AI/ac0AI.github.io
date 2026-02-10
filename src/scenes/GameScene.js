@@ -167,7 +167,7 @@ export class GameScene extends Phaser.Scene {
 
         // Adjust camera to fit house
         this.cameras.main.setZoom(0.8);
-        this.cameras.main.centerOn(this.cameras.main.width / 2 + 100, this.cameras.main.height / 2);
+        this.cameras.main.centerOn(this.cameras.main.width / 2, this.cameras.main.height / 2);
     }
 
     restartGame() {
@@ -834,7 +834,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     handleMovement() {
-        const speed = 3.5 * this.speedMultiplier;
+        const speed = 5.0 * this.speedMultiplier;
         let dx = 0;
         let dy = 0;
 
