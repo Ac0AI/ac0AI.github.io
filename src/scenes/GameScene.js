@@ -485,6 +485,56 @@ export class GameScene extends Phaser.Scene {
         this.scoreText = this.add.text(16, 16, 'Poäng: 0', { fontSize: '32px', fill: '#000', fontFamily: 'Fredoka One' });
         this.timerText = this.add.text(16, 50, 'Tid: 60', { fontSize: '32px', fill: '#000', fontFamily: 'Fredoka One' });
         this.levelText = this.add.text(16, 84, 'Bana 1 (0/15)', { fontSize: '28px', fill: '#000', fontFamily: 'Fredoka One' });
+
+        // Volume control (top-right corner)
+        const camW = this.cameras.main.width;
+        this.musicVolume = 0.4;
+
+        // Mute button
+        this.muteBtn = this.add.text(camW - 50, 16, '🔊', { fontSize: '32px' })
+            .setInteractive({ useHandCursor: true })
+            .setScrollFactor(0)
+            .setDepth(3000);
+
+        this.muteBtn.on('pointerdown', () => {
+            if (this.bgMusic) {
+                if (this.bgMusic.volume > 0) {
+                    this.bgMusic.setVolume(0);
+                    this.muteBtn.setText('🔇');
+                } else {
+                    this.bgMusic.setVolume(this.musicVolume);
+                    this.muteBtn.setText('🔊');
+                }
+            }
+        });
+
+        // Volume down
+        this.volDown = this.add.text(camW - 130, 16, '➖', { fontSize: '28px' })
+            .setInteractive({ useHandCursor: true })
+            .setScrollFactor(0)
+            .setDepth(3000);
+
+        this.volDown.on('pointerdown', () => {
+            this.musicVolume = Math.max(0, this.musicVolume - 0.1);
+            if (this.bgMusic) {
+                this.bgMusic.setVolume(this.musicVolume);
+                this.muteBtn.setText(this.musicVolume > 0 ? '🔊' : '🔇');
+            }
+        });
+
+        // Volume up
+        this.volUp = this.add.text(camW - 90, 16, '➕', { fontSize: '28px' })
+            .setInteractive({ useHandCursor: true })
+            .setScrollFactor(0)
+            .setDepth(3000);
+
+        this.volUp.on('pointerdown', () => {
+            this.musicVolume = Math.min(1, this.musicVolume + 0.1);
+            if (this.bgMusic) {
+                this.bgMusic.setVolume(this.musicVolume);
+                this.muteBtn.setText('🔊');
+            }
+        });
     }
 
     updateTimer() {
