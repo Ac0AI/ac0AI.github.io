@@ -488,7 +488,7 @@ export class GameScene extends Phaser.Scene {
 
         // Volume control (top-right corner)
         const camW = this.cameras.main.width;
-        this.musicVolume = 0.4;
+        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.4;
 
         // Mute button
         this.muteBtn = this.add.text(camW - 50, 16, '🔊', { fontSize: '32px' })
@@ -501,9 +501,11 @@ export class GameScene extends Phaser.Scene {
                 if (this.bgMusic.volume > 0) {
                     this.bgMusic.setVolume(0);
                     this.muteBtn.setText('🔇');
+                    localStorage.setItem('flyttsmart_volume', '0');
                 } else {
-                    this.bgMusic.setVolume(this.musicVolume);
+                    this.bgMusic.setVolume(this.musicVolume || 0.4);
                     this.muteBtn.setText('🔊');
+                    localStorage.setItem('flyttsmart_volume', String(this.musicVolume || 0.4));
                 }
             }
         });
@@ -520,6 +522,7 @@ export class GameScene extends Phaser.Scene {
                 this.bgMusic.setVolume(this.musicVolume);
                 this.muteBtn.setText(this.musicVolume > 0 ? '🔊' : '🔇');
             }
+            localStorage.setItem('flyttsmart_volume', String(this.musicVolume));
         });
 
         // Volume up
@@ -534,6 +537,7 @@ export class GameScene extends Phaser.Scene {
                 this.bgMusic.setVolume(this.musicVolume);
                 this.muteBtn.setText('🔊');
             }
+            localStorage.setItem('flyttsmart_volume', String(this.musicVolume));
         });
     }
 
