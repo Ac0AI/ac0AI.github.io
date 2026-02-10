@@ -888,13 +888,14 @@ export class GameScene extends Phaser.Scene {
             if (dx < 0) this.player.setFlipX(true);
             else if (dx > 0) this.player.setFlipX(false);
 
-            // Bouncy walk animation
+            // Bouncy walk + waddle animation (simulates stepping)
             if (!this.walkTween || !this.walkTween.isPlaying()) {
                 this.walkTween = this.tweens.add({
                     targets: this.player,
                     scaleY: { from: 0.8, to: 0.72 },
                     scaleX: { from: 0.8, to: 0.86 },
-                    duration: 120,
+                    angle: { from: -6, to: 6 },
+                    duration: 100,
                     yoyo: true,
                     repeat: -1,
                     ease: 'Sine.easeInOut'
@@ -917,6 +918,7 @@ export class GameScene extends Phaser.Scene {
             if (this.walkTween && this.walkTween.isPlaying()) {
                 this.walkTween.stop();
                 this.player.setScale(0.8);
+                this.player.angle = 0;
             }
         }
     }
