@@ -643,6 +643,7 @@ export class GameScene extends Phaser.Scene {
 
         this.currentLevel++;
         this.itemsDelivered = 0;
+        this.timeLeft = 60;
 
         // Reset difficulty for new level
         this.sheepSpawnCount = 1;
