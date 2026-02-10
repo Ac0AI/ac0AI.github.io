@@ -7,15 +7,16 @@ export class BootScene extends Phaser.Scene {
         this.load.image('sprites', 'assets/sprites.png');
         this.load.image('ground_bg', 'assets/ground_bg.png');
 
+
         // Level music
-        this.load.audio('level1', 'assets/level1.mp3');
-        this.load.audio('level2', 'assets/level2.mp3');
-        this.load.audio('level3', 'assets/level3.mp3');
-        this.load.audio('level4', 'assets/level4.mp3');
-        this.load.audio('level5', 'assets/level5.mp3');
+        this.load.audio('level1', 'assets/Level 1.mp3');
+        this.load.audio('level2', 'assets/Level 2.mp3');
+        this.load.audio('level3', 'assets/Level 3.mp3');
+        this.load.audio('level4', 'assets/Level 4.mp3');
+        this.load.audio('level5', 'assets/Level 5.mp3');
 
         // Sound effects
-        this.load.audio('roadkill', 'assets/roadkill.mp3');
+        this.load.audio('roadkill', 'assets/Roadkill.mp3');
     }
 
     create() {
