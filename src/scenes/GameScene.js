@@ -684,6 +684,27 @@ export class GameScene extends Phaser.Scene {
     }
 
     completeLevel() {
+        // Time bonus: remaining seconds = bonus points
+        const timeBonus = this.timeLeft;
+        if (timeBonus > 0) {
+            this.score += timeBonus;
+            // Show bonus text
+            const cx = this.cameras.main.width / 2;
+            const cy = this.cameras.main.height / 2 - 50;
+            const bonusText = this.add.text(cx, cy, `+${timeBonus} TIDSBONUS!`, {
+                fontSize: '36px', fill: '#2ecc71', fontFamily: 'Fredoka One',
+                stroke: '#000', strokeThickness: 3
+            }).setOrigin(0.5).setDepth(2500);
+            this.tweens.add({
+                targets: bonusText,
+                y: cy - 80,
+                alpha: 0,
+                duration: 2000,
+                ease: 'Power2',
+                onComplete: () => bonusText.destroy()
+            });
+        }
+
         if (this.currentLevel >= this.maxLevel) {
             // Victory!
             this.victory();
