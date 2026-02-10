@@ -55,8 +55,17 @@ export class GameScene extends Phaser.Scene {
         // Prepare UI
         this.createUI();
 
-        // Background Music
-        this.music = this.sound.add('bgmusic', { loop: true, volume: 0.5 });
+
+        // Level Music and Sound Effects
+        this.levelMusic = [
+            this.sound.add('level1', { loop: true, volume: 0.5 }),
+            this.sound.add('level2', { loop: true, volume: 0.5 }),
+            this.sound.add('level3', { loop: true, volume: 0.5 }),
+            this.sound.add('level4', { loop: true, volume: 0.5 }),
+            this.sound.add('level5', { loop: true, volume: 0.5 })
+        ];
+        this.roadkillSound = this.sound.add('roadkill', { volume: 0.7 });
+        this.currentMusic = null;
 
         // Show Start Screen
         this.createStartScreen();
