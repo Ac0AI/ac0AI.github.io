@@ -11,8 +11,6 @@ export class GameScene extends Phaser.Scene {
         this.isGameStarted = false;
         this.hasGracePeriod = false;
         this.sheepSpawnCount = 1;
-        this.tileWidth = 64;
-        this.tileHeight = 32;
         this.carriedItem = null;
 
         // Level system
@@ -40,22 +38,19 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // Create isometric grid
+        // Create background
         this.createGround();
 
         // Create Zones
         this.createZones();
 
-        // Player
-        const pPos = this.isoToScreen(2, 2);
-        this.player = this.physics.add.sprite(pPos.x, pPos.y, 'player');
+        // Player - starts at center of screen
+        const cx = this.cameras.main.width / 2;
+        const cy = this.cameras.main.height / 2;
+        this.player = this.physics.add.sprite(cx, cy, 'player');
         this.player.setOrigin(0.5, 0.85);
         this.player.setScale(0.8);
         this.player.setCollideWorldBounds(true);
-
-        // Custom properties for isometric movement
-        this.player.isoX = 2;
-        this.player.isoY = 2;
 
         // Furniture Group
         this.furnitureGroup = this.add.group();
@@ -355,35 +350,39 @@ export class GameScene extends Phaser.Scene {
     }
 
     createZones() {
-        // Move truck more to the left (Iso: -x, +y)
-        const truckPos = this.isoToScreen(-2, 8);
-        this.truck = this.add.image(truckPos.x, truckPos.y, 'truck');
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+
+        // Truck bottom-left
+        const truckX = 130;
+        const truckY = h - 120;
+        this.truck = this.add.image(truckX, truckY, 'truck');
         this.truck.setOrigin(0.5, 0.85);
-        this.truck.setDepth(truckPos.y);
+        this.truck.setDepth(truckY);
 
-        const housePos = this.isoToScreen(8, -2);
-        this.house = this.add.image(housePos.x, housePos.y, 'house');
+        // House top-right
+        const houseX = w - 130;
+        const houseY = 140;
+        this.house = this.add.image(houseX, houseY, 'house');
         this.house.setOrigin(0.5, 0.85);
-        this.house.setDepth(housePos.y);
+        this.house.setDepth(houseY);
 
-        this.truckZone = { x: -2, y: 8, radius: 3 };
-        this.houseZone = { x: 8, y: -2, radius: 3 };
+        this.truckZone = { x: truckX, y: truckY, radius: 80 };
+        this.houseZone = { x: houseX, y: houseY, radius: 80 };
     }
 
     spawnFurniture() {
         const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         for (let i = 0; i < 3; i++) {
             const type = types[Phaser.Math.Between(0, types.length - 1)];
-            const rx = Phaser.Math.FloatBetween(-1, 2);
-            const ry = Phaser.Math.FloatBetween(5, 7);
+            // Spawn near the truck area (bottom-left)
+            const rx = Phaser.Math.FloatBetween(60, 250);
+            const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 220, this.cameras.main.height - 60);
 
-            const pos = this.isoToScreen(rx, ry);
-            const item = this.add.sprite(pos.x, pos.y, type);
+            const item = this.add.sprite(rx, ry, type);
             item.setOrigin(0.5, 0.75);
-            item.isoX = rx;
-            item.isoY = ry;
             item.itemType = type;
-            item.setDepth(pos.y);
+            item.setDepth(ry);
             this.furnitureGroup.add(item);
         }
     }
@@ -391,59 +390,42 @@ export class GameScene extends Phaser.Scene {
     spawnSheep() {
         if (!this.isGameStarted || this.isGameOver) return;
 
-        // Spawn multiple based on difficulty
         const count = this.sheepSpawnCount || 1;
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
 
         for (let i = 0; i < count; i++) {
-            // Spawn randomly around the edges of the isometric map
-            // Map is roughly -5 to 15 in iso coordinates
-            const edges = ['top', 'bottom', 'left', 'right'];
-
             let sx, sy;
             let attempts = 0;
             let tooClose = true;
 
-            // Try to find a spawn position not too close to player
+            // Spawn at screen edges, not too close to player
             while (tooClose && attempts < 10) {
-                const edge = edges[Phaser.Math.Between(0, 3)];
-
+                const edge = Phaser.Math.Between(0, 3);
                 switch (edge) {
-                    case 'top': sx = Phaser.Math.Between(-5, 15); sy = -5; break;
-                    case 'bottom': sx = Phaser.Math.Between(-5, 15); sy = 15; break;
-                    case 'left': sx = -5; sy = Phaser.Math.Between(-5, 15); break;
-                    case 'right': sx = 15; sy = Phaser.Math.Between(-5, 15); break;
+                    case 0: sx = Phaser.Math.Between(0, w); sy = -30; break;
+                    case 1: sx = Phaser.Math.Between(0, w); sy = h + 30; break;
+                    case 2: sx = -30; sy = Phaser.Math.Between(0, h); break;
+                    case 3: sx = w + 30; sy = Phaser.Math.Between(0, h); break;
                 }
-
-                // Check distance to player (in isometric coordinates)
-                const distToPlayer = Math.sqrt(
-                    Math.pow(sx - this.player.isoX, 2) +
-                    Math.pow(sy - this.player.isoY, 2)
-                );
-
-                // Require at least 5 units away from player
-                tooClose = distToPlayer < 5;
+                const distToPlayer = Phaser.Math.Distance.Between(sx, sy, this.player.x, this.player.y);
+                tooClose = distToPlayer < 150;
                 attempts++;
             }
 
-            const pos = this.isoToScreen(sx, sy);
-            const sheep = this.add.sprite(pos.x, pos.y, 'sheep');
-            sheep.isoX = sx;
-            sheep.isoY = sy;
+            const sheep = this.add.sprite(sx, sy, 'sheep');
 
-            // Scale sheep based on level: starts at 0.4, grows 0.15 per level
             const sheepScale = 0.4 + (this.currentLevel - 1) * 0.15;
             sheep.setScale(sheepScale);
-            sheep.sheepScale = sheepScale; // Store for collision radius
 
-            // Pick a random target on the opposite side to walk towards
-            const targetX = Phaser.Math.Between(-5, 15);
-            const targetY = Phaser.Math.Between(-5, 15);
-
+            // Random target on the other side of screen
+            const targetX = Phaser.Math.Between(0, w);
+            const targetY = Phaser.Math.Between(0, h);
             const dx = targetX - sx;
             const dy = targetY - sy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-            const sheepSpeed = 0.03 + (this.currentLevel * 0.005);
+            const sheepSpeed = 1.0 + (this.currentLevel * 0.3);
             sheep.vx = (dx / dist) * sheepSpeed;
             sheep.vy = (dy / dist) * sheepSpeed;
             sheep.isBoss = false;
@@ -452,20 +434,17 @@ export class GameScene extends Phaser.Scene {
             this.physics.add.existing(sheep);
         }
 
-        // Boss sheep on level 5 (10% chance per spawn)
+        // Boss sheep on level 5
         if (this.currentLevel >= 5 && Phaser.Math.Between(1, 10) === 1) {
             const edge = Phaser.Math.Between(0, 3);
             let bx, by;
             switch (edge) {
-                case 0: bx = Phaser.Math.Between(-5, 15); by = -5; break;
-                case 1: bx = Phaser.Math.Between(-5, 15); by = 15; break;
-                case 2: bx = -5; by = Phaser.Math.Between(-5, 15); break;
-                case 3: bx = 15; by = Phaser.Math.Between(-5, 15); break;
+                case 0: bx = Phaser.Math.Between(0, w); by = -30; break;
+                case 1: bx = Phaser.Math.Between(0, w); by = h + 30; break;
+                case 2: bx = -30; by = Phaser.Math.Between(0, h); break;
+                case 3: bx = w + 30; by = Phaser.Math.Between(0, h); break;
             }
-            const bpos = this.isoToScreen(bx, by);
-            const boss = this.add.sprite(bpos.x, bpos.y, 'sheep');
-            boss.isoX = bx;
-            boss.isoY = by;
+            const boss = this.add.sprite(bx, by, 'sheep');
             boss.setScale(1.2);
             boss.setTint(0xff4444);
             boss.isBoss = true;
@@ -477,46 +456,46 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateSheep(dt) {
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+
         this.sheepGroup.children.iterate(sheep => {
             if (!sheep) return;
 
             // Sheep AI: chasing behavior on level 3+
             if (this.currentLevel >= 3 && !sheep.isBoss) {
-                const chaseStrength = this.currentLevel >= 4 ? 0.0008 : 0.0004;
-                const toDx = this.player.isoX - sheep.isoX;
-                const toDy = this.player.isoY - sheep.isoY;
+                const chaseStrength = this.currentLevel >= 4 ? 0.05 : 0.02;
+                const toDx = this.player.x - sheep.x;
+                const toDy = this.player.y - sheep.y;
                 const toDist = Math.sqrt(toDx * toDx + toDy * toDy) || 1;
                 sheep.vx += (toDx / toDist) * chaseStrength;
                 sheep.vy += (toDy / toDist) * chaseStrength;
             }
             if (sheep.isBoss) {
-                const toDx = this.player.isoX - sheep.isoX;
-                const toDy = this.player.isoY - sheep.isoY;
+                const toDx = this.player.x - sheep.x;
+                const toDy = this.player.y - sheep.y;
                 const toDist = Math.sqrt(toDx * toDx + toDy * toDy) || 1;
-                sheep.vx = (toDx / toDist) * 0.04;
-                sheep.vy = (toDy / toDist) * 0.04;
+                sheep.vx = (toDx / toDist) * 2.0;
+                sheep.vy = (toDy / toDist) * 2.0;
             }
-            sheep.isoX += sheep.vx;
-            sheep.isoY += sheep.vy;
 
-            const pos = this.isoToScreen(sheep.isoX, sheep.isoY);
-            sheep.x = pos.x;
-            sheep.y = pos.y;
+            sheep.x += sheep.vx;
+            sheep.y += sheep.vy;
             sheep.setDepth(sheep.y);
 
-            // Bounds check - remove if too far out
-            if (sheep.isoX < -10 || sheep.isoX > 20 || sheep.isoY < -10 || sheep.isoY > 20) {
+            // Bounds check - remove if way off screen
+            if (sheep.x < -100 || sheep.x > w + 100 || sheep.y < -100 || sheep.y > h + 100) {
                 sheep.destroy();
                 return;
             }
 
-            // Check collision with player (unless grace period or shield)
+            // Collision with player (pixel distance)
             if (!this.hasGracePeriod && !this.hasShield) {
-                const isoDist = Phaser.Math.Distance.Between(
-                    this.player.isoX, this.player.isoY,
-                    sheep.isoX, sheep.isoY
+                const dist = Phaser.Math.Distance.Between(
+                    this.player.x, this.player.y,
+                    sheep.x, sheep.y
                 );
-                if (isoDist < 1.0) {
+                if (dist < 40) {
                     this.gameOver("KROCKAD AV FÅR!");
                 }
             }
@@ -707,16 +686,13 @@ export class GameScene extends Phaser.Scene {
     spawnPowerUp() {
         const types = ['powerup_coffee', 'powerup_clock', 'powerup_shield'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
-        const rx = Phaser.Math.FloatBetween(0, 3);
-        const ry = Phaser.Math.FloatBetween(3, 7);
-        const pos = this.isoToScreen(rx, ry);
+        const rx = Phaser.Math.FloatBetween(100, this.cameras.main.width - 100);
+        const ry = Phaser.Math.FloatBetween(100, this.cameras.main.height - 100);
 
-        const pu = this.add.sprite(pos.x, pos.y, type);
+        const pu = this.add.sprite(rx, ry, type);
         pu.setOrigin(0.5, 0.75);
-        pu.isoX = rx;
-        pu.isoY = ry;
         pu.powerUpType = type;
-        pu.setDepth(pos.y);
+        pu.setDepth(ry);
 
         // Glowing pulse animation
         this.tweens.add({
@@ -747,10 +723,10 @@ export class GameScene extends Phaser.Scene {
             if (!pu || !pu.active) return;
 
             const dist = Phaser.Math.Distance.Between(
-                this.player.isoX, this.player.isoY, pu.isoX, pu.isoY
+                this.player.x, this.player.y, pu.x, pu.y
             );
 
-            if (dist < 1.5) {
+            if (dist < 50) {
                 this.activatePowerUp(pu.powerUpType);
                 pu.destroy();
             }
@@ -794,6 +770,8 @@ export class GameScene extends Phaser.Scene {
     // === DOG ===
     spawnDog() {
         const cx = this.cameras.main.width / 2;
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
 
         // Announce
         const announce = this.add.text(cx, 80, '🐕 VALLHUND!', {
@@ -809,23 +787,19 @@ export class GameScene extends Phaser.Scene {
         const edge = Phaser.Math.Between(0, 3);
         let dx, dy;
         switch (edge) {
-            case 0: dx = Phaser.Math.Between(-3, 12); dy = -5; break;
-            case 1: dx = Phaser.Math.Between(-3, 12); dy = 15; break;
-            case 2: dx = -5; dy = Phaser.Math.Between(-3, 12); break;
-            case 3: dx = 15; dy = Phaser.Math.Between(-3, 12); break;
+            case 0: dx = Phaser.Math.Between(0, w); dy = -30; break;
+            case 1: dx = Phaser.Math.Between(0, w); dy = h + 30; break;
+            case 2: dx = -30; dy = Phaser.Math.Between(0, h); break;
+            case 3: dx = w + 30; dy = Phaser.Math.Between(0, h); break;
         }
 
-        const pos = this.isoToScreen(dx, dy);
-        const dog = this.add.sprite(pos.x, pos.y, 'dog');
-        dog.isoX = dx;
-        dog.isoY = dy;
-        dog.setDepth(pos.y);
+        const dog = this.add.sprite(dx, dy, 'dog');
+        dog.setDepth(dy);
 
         // Dog chases each sheep and removes it
         const chaseSheep = () => {
             const sheepList = this.sheepGroup.children.getArray().filter(s => s && s.active);
             if (sheepList.length === 0) {
-                // All sheep gone, dog runs off screen
                 this.tweens.add({
                     targets: dog, alpha: 0, duration: 800,
                     onComplete: () => dog.destroy()
@@ -837,75 +811,56 @@ export class GameScene extends Phaser.Scene {
             let nearest = sheepList[0];
             let minDist = Infinity;
             sheepList.forEach(s => {
-                const d = Phaser.Math.Distance.Between(dog.isoX, dog.isoY, s.isoX, s.isoY);
+                const d = Phaser.Math.Distance.Between(dog.x, dog.y, s.x, s.y);
                 if (d < minDist) { minDist = d; nearest = s; }
             });
 
             // Tween dog to sheep position
-            const targetPos = this.isoToScreen(nearest.isoX, nearest.isoY);
             this.tweens.add({
                 targets: dog,
-                x: targetPos.x, y: targetPos.y,
+                x: nearest.x, y: nearest.y,
                 duration: 400,
                 onUpdate: () => { dog.setDepth(dog.y); },
                 onComplete: () => {
-                    // Remove the sheep
                     if (nearest && nearest.active) {
                         nearest.destroy();
                     }
-                    // Chase next sheep after short delay
                     this.time.delayedCall(200, chaseSheep);
                 }
             });
         };
 
-        // Start chasing after brief pause
         this.time.delayedCall(300, chaseSheep);
     }
 
     handleMovement() {
-        const speed = 0.10 * this.speedMultiplier;
+        const speed = 3.5 * this.speedMultiplier;
         let dx = 0;
         let dy = 0;
 
-        if (this.cursors.up.isDown || this.wasd.up.isDown) {
-            dx -= speed;
-            dy -= speed;
-        } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
-            dx += speed;
-            dy += speed;
-        }
-
-        if (this.cursors.left.isDown || this.wasd.left.isDown) {
-            dx -= speed;
-            dy += speed;
-        } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
-            dx += speed;
-            dy -= speed;
-        }
+        if (this.cursors.up.isDown || this.wasd.up.isDown) dy -= speed;
+        if (this.cursors.down.isDown || this.wasd.down.isDown) dy += speed;
+        if (this.cursors.left.isDown || this.wasd.left.isDown) dx -= speed;
+        if (this.cursors.right.isDown || this.wasd.right.isDown) dx += speed;
 
         if (dx !== 0 || dy !== 0) {
-            this.player.isoX += dx;
-            this.player.isoY += dy;
-
-            const min = -1.5;
-            const max = 11.5;
-            this.player.isoX = Phaser.Math.Clamp(this.player.isoX, min, max);
-            this.player.isoY = Phaser.Math.Clamp(this.player.isoY, min, max);
-
-            if (dx > dy) {
-                this.player.setFlipX(true);
-            } else if (dx < dy) {
-                this.player.setFlipX(false);
+            // Normalize diagonal movement
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
             }
 
-            const screenPos = this.isoToScreen(this.player.isoX, this.player.isoY);
-            this.player.x = screenPos.x;
-            this.player.y = screenPos.y;
+            this.player.x += dx;
+            this.player.y += dy;
+
+            // Clamp to screen bounds
+            this.player.x = Phaser.Math.Clamp(this.player.x, 30, this.cameras.main.width - 30);
+            this.player.y = Phaser.Math.Clamp(this.player.y, 30, this.cameras.main.height - 30);
+
+            if (dx < 0) this.player.setFlipX(true);
+            else if (dx > 0) this.player.setFlipX(false);
 
             if (this.carriedItem) {
-                this.carriedItem.isoX = this.player.isoX;
-                this.carriedItem.isoY = this.player.isoY;
                 this.carriedItem.x = this.player.x;
                 this.carriedItem.y = this.player.y - 60;
                 this.carriedItem.setDepth(this.player.depth + 1);
@@ -923,8 +878,8 @@ export class GameScene extends Phaser.Scene {
         if (!this.isGameStarted) return;
 
         if (this.carriedItem) {
-            const distToHouse = Phaser.Math.Distance.Between(this.player.isoX, this.player.isoY, this.houseZone.x, this.houseZone.y);
-            if (distToHouse < 2.5) {
+            const distToHouse = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.houseZone.x, this.houseZone.y);
+            if (distToHouse < this.houseZone.radius) {
                 const points = this.pointValues[this.carriedItem.itemType] || 1;
                 this.score += points;
                 this.itemsDelivered++;
@@ -940,28 +895,25 @@ export class GameScene extends Phaser.Scene {
                     duration: 800, onComplete: () => ptText.destroy()
                 });
 
-                // Remove the delivered item
                 this.carriedItem.destroy();
                 this.carriedItem = null;
 
-                // Check for level completion (Level 5 continues until timer runs out)
                 if (this.currentLevel < this.maxLevel && this.itemsDelivered >= this.levelGoal) {
                     this.completeLevel();
                 } else {
-                    // Spawn new item
                     this.spawnOneFurniture();
                 }
             } else {
-                // Drop on ground if not delivered
+                // Drop on ground
                 this.carriedItem.y = this.player.y;
                 this.carriedItem = null;
             }
         } else {
             let closest = null;
-            let minC = 1.5;
+            let minC = 60; // pixel pickup range
 
             this.furnitureGroup.children.iterate(item => {
-                const dist = Phaser.Math.Distance.Between(this.player.isoX, this.player.isoY, item.isoX, item.isoY);
+                const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y);
                 if (dist < minC) {
                     minC = dist;
                     closest = item;
@@ -975,18 +927,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnOneFurniture() {
-        const types = ['sofa', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
+        const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
-        const rx = Phaser.Math.FloatBetween(-1, 2);
-        const ry = Phaser.Math.FloatBetween(5, 7);
+        // Spawn near the truck area
+        const rx = Phaser.Math.FloatBetween(60, 250);
+        const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 220, this.cameras.main.height - 60);
 
-        const pos = this.isoToScreen(rx, ry);
-        const item = this.add.sprite(pos.x, pos.y, type);
+        const item = this.add.sprite(rx, ry, type);
         item.setOrigin(0.5, 0.75);
-        item.isoX = rx;
-        item.isoY = ry;
         item.itemType = type;
-        item.setDepth(pos.y); // Set initial depth
+        item.setDepth(ry);
         this.furnitureGroup.add(item);
     }
 
@@ -997,12 +947,6 @@ export class GameScene extends Phaser.Scene {
                 item.setDepth(item.y);
             }
         });
-    }
-
-    isoToScreen(x, y) {
-        const screenX = (x - y) * this.tileWidth + this.cameras.main.width / 2;
-        const screenY = (x + y) * this.tileHeight + this.cameras.main.height / 4;
-        return { x: screenX, y: screenY };
     }
 
     createUI() {
