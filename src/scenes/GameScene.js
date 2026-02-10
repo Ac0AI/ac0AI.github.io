@@ -176,6 +176,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     restartGame() {
+        // Stop all sounds to prevent double music
+        this.sound.stopAll();
         this.scene.restart();
     }
 
@@ -327,7 +329,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnFurniture() {
-        const types = ['sofa', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
+        const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         for (let i = 0; i < 3; i++) {
             const type = types[Phaser.Math.Between(0, types.length - 1)];
             const rx = Phaser.Math.FloatBetween(-1, 2);
@@ -1037,6 +1039,7 @@ export class GameScene extends Phaser.Scene {
         this.timerText.setText('Tid: ' + this.timeLeft);
         if (this.timeLeft <= 0) {
             this.isGameOver = true;
+            this.sound.stopAll();
 
             const message = 'TIDEN TOG SLUT!';
 
