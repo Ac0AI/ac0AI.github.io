@@ -346,68 +346,106 @@ export class GameScene extends Phaser.Scene {
         const cy = this.cameras.main.height / 2;
 
         // Dark overlay
-        const overlay = this.add.rectangle(cx, cy, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.7).setDepth(2000);
+        this.add.rectangle(cx, cy, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.75).setDepth(2000);
 
-        this.add.text(cx, cy - 140, 'GAME OVER\n' + reason, {
-            fontSize: '40px', fill: '#ff0000', fontFamily: 'Fredoka One',
-            stroke: '#fff', strokeThickness: 4, align: 'center'
+        this.add.text(cx, 40, 'GAME OVER', {
+            fontSize: '48px', fill: '#ff0000', fontFamily: 'Fredoka One',
+            stroke: '#000', strokeThickness: 6
         }).setOrigin(0.5).setDepth(2001);
 
-        this.add.text(cx, cy - 70, 'Poäng: ' + this.score + '  |  Bana: ' + this.currentLevel, {
+        this.add.text(cx, 90, reason, {
             fontSize: '28px', fill: '#fff', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2001);
 
-        // Initials input
-        this.add.text(cx, cy - 30, 'Skriv dina initialer:', {
-            fontSize: '24px', fill: '#f1c40f', fontFamily: 'Fredoka One'
+        this.add.text(cx, 130, `Poäng: ${this.score}  |  Bana: ${this.currentLevel}`, {
+            fontSize: '24px', fill: '#3498db', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setDepth(2001);
+
+        // === INITIALS INPUT ===
+        this.add.text(cx, 175, 'Skriv 3 initialer för topplistan:', {
+            fontSize: '22px', fill: '#f1c40f', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2001);
 
         this.playerInitials = '';
-        this.initialsText = this.add.text(cx, cy + 10, '_ _ _', {
-            fontSize: '48px', fill: '#fff', fontFamily: 'Fredoka One', letterSpacing: 16
+        this.initialsSubmitted = false;
+
+        const boxWidth = 50;
+        const boxGap = 15;
+        const startX = cx - (boxWidth + boxGap);
+
+        this.initialBoxes = [];
+        this.initialLetters = [];
+        for (let i = 0; i < 3; i++) {
+            const bx = startX + i * (boxWidth + boxGap);
+            const box = this.add.rectangle(bx, 220, boxWidth, 55, 0x333333)
+                .setStrokeStyle(3, i === 0 ? 0xf1c40f : 0x666666)
+                .setDepth(2001);
+            const letter = this.add.text(bx, 220, '_', {
+                fontSize: '36px', fill: '#fff', fontFamily: 'Fredoka One'
+            }).setOrigin(0.5).setDepth(2002);
+            this.initialBoxes.push(box);
+            this.initialLetters.push(letter);
+        }
+
+        this.add.text(cx, 260, '(Backspace = ångra)', {
+            fontSize: '14px', fill: '#888', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2001);
 
-        // Listen for letter keys
-        this.input.keyboard.on('keydown', (event) => {
-            if (this.initialsSubmitted) return;
+        this.submitStatusText = this.add.text(cx, 290, '', {
+            fontSize: '22px', fill: '#2ecc71', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setDepth(2001);
 
+        this.input.keyboard.on('keydown', (event) => {
+            if (this.initialsSubmitted) {
+                if (event.key === 'Enter') this.restartGame();
+                return;
+            }
             const key = event.key.toUpperCase();
             if (/^[A-ZÅÄÖ0-9]$/.test(key) && this.playerInitials.length < 3) {
                 this.playerInitials += key;
-                const display = this.playerInitials.split('').join(' ').padEnd(5, ' _');
-                this.initialsText.setText(display);
-
+                const idx = this.playerInitials.length - 1;
+                this.initialLetters[idx].setText(key);
+                this.initialBoxes[idx].setStrokeStyle(3, 0x2ecc71);
+                if (idx + 1 < 3) {
+                    this.initialBoxes[idx + 1].setStrokeStyle(3, 0xf1c40f);
+                }
                 if (this.playerInitials.length === 3) {
                     this.initialsSubmitted = true;
+                    this.submitStatusText.setText('Sparar...');
                     this.submitScore(this.playerInitials, this.score, this.currentLevel);
                 }
             }
             if (event.key === 'Backspace' && this.playerInitials.length > 0) {
+                const idx = this.playerInitials.length - 1;
+                this.initialLetters[idx].setText('_');
+                this.initialBoxes[idx].setStrokeStyle(3, 0xf1c40f);
+                if (idx + 1 < 3) {
+                    this.initialBoxes[idx + 1].setStrokeStyle(3, 0x666666);
+                }
                 this.playerInitials = this.playerInitials.slice(0, -1);
-                const display = this.playerInitials.split('').join(' ').padEnd(5, ' _');
-                this.initialsText.setText(display || '_ _ _');
             }
         });
 
-        // Leaderboard area
-        this.leaderboardY = cy + 70;
-        this.add.text(cx, this.leaderboardY, '🏆 TOPPLISTA', {
-            fontSize: '28px', fill: '#f1c40f', fontFamily: 'Fredoka One'
+        // === LEADERBOARD ===
+        this.leaderboardY = 320;
+        this.add.text(cx, this.leaderboardY, '🏆 TOPPLISTA 🏆', {
+            fontSize: '26px', fill: '#f1c40f', fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2001);
 
         this.loadLeaderboard();
 
-        // Restart button (below leaderboard)
-        const restart = this.add.text(cx, cy + 280, 'ENTER = Starta om', {
-            fontSize: '28px', fill: '#fff', backgroundColor: '#27ae60',
+        const restart = this.add.text(cx, cy + 280, '🔄 ENTER = Spela igen', {
+            fontSize: '26px', fill: '#fff', backgroundColor: '#27ae60',
             padding: { x: 20, y: 10 }, fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(2001);
         restart.on('pointerdown', () => this.restartGame());
     }
 
     submitScore(initials, score, level) {
-        if (!window.leaderboardDB) return;
-
+        if (!window.leaderboardDB) {
+            if (this.submitStatusText) this.submitStatusText.setText('Ingen databas');
+            return;
+        }
         const ref = window.leaderboardDB.ref('leaderboard');
         ref.push({
             name: initials,
@@ -415,63 +453,59 @@ export class GameScene extends Phaser.Scene {
             level: level,
             date: new Date().toISOString()
         }).then(() => {
+            if (this.submitStatusText) this.submitStatusText.setText(`✅ ${initials} sparad!`);
             this.loadLeaderboard();
         }).catch(err => {
             console.log('Could not save score:', err);
+            if (this.submitStatusText) this.submitStatusText.setText('Kunde inte spara');
         });
     }
 
     loadLeaderboard() {
         if (!window.leaderboardDB) return;
-
         const cx = this.cameras.main.width / 2;
         const ref = window.leaderboardDB.ref('leaderboard');
-
         ref.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
             const scores = [];
-            snapshot.forEach(child => {
-                scores.push(child.val());
-            });
+            snapshot.forEach(child => { scores.push(child.val()); });
             scores.sort((a, b) => b.score - a.score);
-
-            // Clear old leaderboard texts
             if (this.leaderboardTexts) {
                 this.leaderboardTexts.forEach(t => t.destroy());
             }
             this.leaderboardTexts = [];
-
             scores.forEach((entry, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
-                const txt = this.add.text(cx, this.leaderboardY + 40 + (i * 30),
-                    `${medal} ${entry.name} - ${entry.score}p (Bana ${entry.level || '?'})`, {
-                    fontSize: '20px', fill: '#fff', fontFamily: 'Fredoka One'
+                const color = i < 3 ? '#f1c40f' : '#ccc';
+                const txt = this.add.text(cx, this.leaderboardY + 35 + (i * 28),
+                    `${medal} ${entry.name}  ${entry.score}p  (Bana ${entry.level || '?'})`, {
+                    fontSize: '18px', fill: color, fontFamily: 'Fredoka One'
                 }).setOrigin(0.5).setDepth(2001);
                 this.leaderboardTexts.push(txt);
             });
-
             if (scores.length === 0) {
                 const txt = this.add.text(cx, this.leaderboardY + 40,
-                    'Inga poäng än - bli den första!', {
-                    fontSize: '20px', fill: '#aaa', fontFamily: 'Fredoka One'
+                    'Inga poäng än!', {
+                    fontSize: '18px', fill: '#aaa', fontFamily: 'Fredoka One'
                 }).setOrigin(0.5).setDepth(2001);
                 this.leaderboardTexts.push(txt);
             }
         });
     }
 
+
     update(time, delta) {
         if (!this.isGameStarted || this.isGameOver) return;
-
+    
         this.handleMovement();
         this.updateSheep(delta);
         this.updateDepthSorting();
     }
-
+    
     handleMovement() {
         const speed = 0.10;
         let dx = 0;
         let dy = 0;
-
+    
         if (this.cursors.up.isDown || this.wasd.up.isDown) {
             dx -= speed;
             dy -= speed;
@@ -479,7 +513,7 @@ export class GameScene extends Phaser.Scene {
             dx += speed;
             dy += speed;
         }
-
+    
         if (this.cursors.left.isDown || this.wasd.left.isDown) {
             dx -= speed;
             dy += speed;
@@ -487,26 +521,26 @@ export class GameScene extends Phaser.Scene {
             dx += speed;
             dy -= speed;
         }
-
+    
         if (dx !== 0 || dy !== 0) {
             this.player.isoX += dx;
             this.player.isoY += dy;
-
+    
             const min = -1.5;
             const max = 11.5;
             this.player.isoX = Phaser.Math.Clamp(this.player.isoX, min, max);
             this.player.isoY = Phaser.Math.Clamp(this.player.isoY, min, max);
-
+    
             if (dx > dy) {
                 this.player.setFlipX(true);
             } else if (dx < dy) {
                 this.player.setFlipX(false);
             }
-
+    
             const screenPos = this.isoToScreen(this.player.isoX, this.player.isoY);
             this.player.x = screenPos.x;
             this.player.y = screenPos.y;
-
+    
             if (this.carriedItem) {
                 this.carriedItem.isoX = this.player.isoX;
                 this.carriedItem.isoY = this.player.isoY;
@@ -516,21 +550,21 @@ export class GameScene extends Phaser.Scene {
             }
         }
     }
-
+    
     handleInteraction() {
         if (!this.isGameStarted) return;
-
+    
         if (this.carriedItem) {
             const distToHouse = Phaser.Math.Distance.Between(this.player.isoX, this.player.isoY, this.houseZone.x, this.houseZone.y);
             if (distToHouse < 2.5) {
                 this.score += 10;
                 this.itemsDelivered++;
                 this.updateUI();
-
+    
                 // Remove the delivered item
                 this.carriedItem.destroy();
                 this.carriedItem = null;
-
+    
                 // Check for level completion (Level 5 continues until timer runs out)
                 if (this.currentLevel < this.maxLevel && this.itemsDelivered >= this.levelGoal) {
                     this.completeLevel();
@@ -546,7 +580,7 @@ export class GameScene extends Phaser.Scene {
         } else {
             let closest = null;
             let minC = 1.5;
-
+    
             this.furnitureGroup.children.iterate(item => {
                 const dist = Phaser.Math.Distance.Between(this.player.isoX, this.player.isoY, item.isoX, item.isoY);
                 if (dist < minC) {
@@ -554,19 +588,19 @@ export class GameScene extends Phaser.Scene {
                     closest = item;
                 }
             });
-
+    
             if (closest) {
                 this.carriedItem = closest;
             }
         }
     }
-
+    
     spawnOneFurniture() {
         const types = ['sofa', 'box', 'tv'];
         const type = types[Phaser.Math.Between(0, 2)];
         const rx = Phaser.Math.FloatBetween(-1, 2);
         const ry = Phaser.Math.FloatBetween(5, 7);
-
+    
         const pos = this.isoToScreen(rx, ry);
         const item = this.add.sprite(pos.x, pos.y, type);
         item.setOrigin(0.5, 0.75);
@@ -576,7 +610,7 @@ export class GameScene extends Phaser.Scene {
         item.setDepth(pos.y); // Set initial depth
         this.furnitureGroup.add(item);
     }
-
+    
     updateDepthSorting() {
         this.player.setDepth(this.player.y);
         this.furnitureGroup.children.iterate(item => {
@@ -585,28 +619,28 @@ export class GameScene extends Phaser.Scene {
             }
         });
     }
-
+    
     isoToScreen(x, y) {
         const screenX = (x - y) * this.tileWidth + this.cameras.main.width / 2;
         const screenY = (x + y) * this.tileHeight + this.cameras.main.height / 4;
         return { x: screenX, y: screenY };
     }
-
+    
     createUI() {
         this.scoreText = this.add.text(16, 16, 'Poäng: 0', { fontSize: '32px', fill: '#000', fontFamily: 'Fredoka One' });
         this.timerText = this.add.text(16, 50, 'Tid: 60', { fontSize: '32px', fill: '#000', fontFamily: 'Fredoka One' });
         this.levelText = this.add.text(16, 84, 'Bana 1 (0/15)', { fontSize: '28px', fill: '#000', fontFamily: 'Fredoka One' });
-
+    
         // Volume control (top-right corner)
         const camW = this.cameras.main.width;
         this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.4;
-
+    
         // Mute button
         this.muteBtn = this.add.text(camW - 50, 16, '🔊', { fontSize: '32px' })
             .setInteractive({ useHandCursor: true })
             .setScrollFactor(0)
             .setDepth(3000);
-
+    
         this.muteBtn.on('pointerdown', () => {
             if (this.bgMusic) {
                 if (this.bgMusic.volume > 0) {
@@ -620,13 +654,13 @@ export class GameScene extends Phaser.Scene {
                 }
             }
         });
-
+    
         // Volume down
         this.volDown = this.add.text(camW - 130, 16, '➖', { fontSize: '28px' })
             .setInteractive({ useHandCursor: true })
             .setScrollFactor(0)
             .setDepth(3000);
-
+    
         this.volDown.on('pointerdown', () => {
             this.musicVolume = Math.max(0, this.musicVolume - 0.1);
             if (this.bgMusic) {
@@ -635,13 +669,13 @@ export class GameScene extends Phaser.Scene {
             }
             localStorage.setItem('flyttsmart_volume', String(this.musicVolume));
         });
-
+    
         // Volume up
         this.volUp = this.add.text(camW - 90, 16, '➕', { fontSize: '28px' })
             .setInteractive({ useHandCursor: true })
             .setScrollFactor(0)
             .setDepth(3000);
-
+    
         this.volUp.on('pointerdown', () => {
             this.musicVolume = Math.min(1, this.musicVolume + 0.1);
             if (this.bgMusic) {
@@ -651,18 +685,18 @@ export class GameScene extends Phaser.Scene {
             localStorage.setItem('flyttsmart_volume', String(this.musicVolume));
         });
     }
-
+    
     updateTimer() {
         this.timeLeft--;
         this.timerText.setText('Tid: ' + this.timeLeft);
         if (this.timeLeft <= 0) {
             this.isGameOver = true;
-
+    
             // Always Game Over when timer ends (even on final level)
             const message = this.currentLevel >= this.maxLevel ?
                 'TIDEN TOG SLUT!\nFinal Poäng: ' + this.score :
                 'GAME OVER';
-
+    
             this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2, message, {
                 fontSize: '56px',
                 fill: '#ff0000',
@@ -671,7 +705,7 @@ export class GameScene extends Phaser.Scene {
                 strokeThickness: 4,
                 align: 'center'
             }).setOrigin(0.5).setDepth(2000);
-
+    
             const restart = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 100, 'Press ENTER to Restart', {
                 fontSize: '32px',
                 fill: '#fff',
@@ -682,7 +716,7 @@ export class GameScene extends Phaser.Scene {
             restart.on('pointerdown', () => this.restartGame());
         }
     }
-
+    
     completeLevel() {
         // Time bonus: remaining seconds = bonus points
         const timeBonus = this.timeLeft;
@@ -704,38 +738,38 @@ export class GameScene extends Phaser.Scene {
                 onComplete: () => bonusText.destroy()
             });
         }
-
+    
         if (this.currentLevel >= this.maxLevel) {
             // Victory!
             this.victory();
         } else {
             // Play level complete jingle
             this.playLevelJingle(this.currentLevel);
-
+    
             // Next level
             this.pauseGame();
             this.createLevelTransitionScreen();
         }
     }
-
+    
     pauseGame() {
         this.isGameStarted = false;
         if (this.timerEvent) this.timerEvent.paused = true;
         if (this.difficultyEvent) this.difficultyEvent.paused = true;
     }
-
+    
     resumeGame() {
         this.isGameStarted = true;
         if (this.timerEvent) this.timerEvent.paused = false;
         if (this.difficultyEvent) this.difficultyEvent.paused = false;
     }
-
+    
     createLevelTransitionScreen() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-
+    
         this.levelTransitionOverlay = this.add.container(0, 0);
-
+    
         const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.8);
         const title = this.add.text(width / 2, height / 2 - 60, `BANA ${this.currentLevel} KLAR!`, {
             fontSize: '56px',
@@ -744,14 +778,14 @@ export class GameScene extends Phaser.Scene {
             stroke: '#fff',
             strokeThickness: 3
         }).setOrigin(0.5);
-
+    
         const nextLevel = this.currentLevel + 1;
         const subtitle = this.add.text(width / 2, height / 2 + 20, `Fåren blir större nu!`, {
             fontSize: '28px',
             fill: '#fff',
             fontFamily: 'Fredoka One'
         }).setOrigin(0.5);
-
+    
         const continueBtn = this.add.text(width / 2, height / 2 + 100, `Press ENTER för Bana ${nextLevel}`, {
             fontSize: '28px',
             fill: '#fff',
@@ -759,52 +793,52 @@ export class GameScene extends Phaser.Scene {
             padding: { x: 20, y: 10 },
             fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
+    
         continueBtn.on('pointerdown', () => this.nextLevel());
-
+    
         this.input.keyboard.once('keydown-ENTER', () => this.nextLevel());
-
+    
         this.levelTransitionOverlay.add([bg, title, subtitle, continueBtn]);
         this.levelTransitionOverlay.setDepth(2000);
     }
-
+    
     nextLevel() {
         if (this.levelTransitionOverlay) {
             this.levelTransitionOverlay.destroy();
         }
-
+    
         this.currentLevel++;
         this.itemsDelivered = 0;
         this.timeLeft = 60;
-
+    
         // Reset difficulty for new level
         this.sheepSpawnCount = 1;
-
+    
         // Clear sheep
         this.sheepGroup.clear(true, true);
-
+    
         // Add grace period
         this.hasGracePeriod = true;
         this.time.delayedCall(3000, () => {
             this.hasGracePeriod = false;
         });
-
+    
         this.updateUI();
         this.resumeGame();
     }
-
+    
     victory() {
         this.isGameOver = true;
         if (this.timerEvent) this.timerEvent.destroy();
         if (this.difficultyEvent) this.difficultyEvent.destroy();
-
+    
         this.createVictoryScreen();
     }
-
+    
     createVictoryScreen() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-
+    
         const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.9);
         const title = this.add.text(width / 2, height / 2 - 80, 'DU VANN!', {
             fontSize: '72px',
@@ -813,19 +847,19 @@ export class GameScene extends Phaser.Scene {
             stroke: '#fff',
             strokeThickness: 4
         }).setOrigin(0.5).setDepth(2000);
-
+    
         const scoreText = this.add.text(width / 2, height / 2, `Slutpoäng: ${this.score}`, {
             fontSize: '36px',
             fill: '#fff',
             fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2000);
-
+    
         const subtitle = this.add.text(width / 2, height / 2 + 50, 'Alla 5 banor klarade!', {
             fontSize: '28px',
             fill: '#2ecc71',
             fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setDepth(2000);
-
+    
         const restart = this.add.text(width / 2, height / 2 + 120, 'Press ENTER to Restart', {
             fontSize: '32px',
             fill: '#fff',
@@ -833,10 +867,10 @@ export class GameScene extends Phaser.Scene {
             padding: 10,
             fontFamily: 'Fredoka One'
         }).setOrigin(0.5).setInteractive().setDepth(2000);
-
+    
         restart.on('pointerdown', () => this.restartGame());
     }
-
+    
     playLevelJingle(level) {
         // Play level complete jingle
         const jingleIndex = level - 1;
@@ -844,7 +878,7 @@ export class GameScene extends Phaser.Scene {
             this.levelJingles[jingleIndex].play();
         }
     }
-
+    
     updateUI() {
         this.scoreText.setText('Poäng: ' + this.score);
         if (this.currentLevel >= this.maxLevel) {
