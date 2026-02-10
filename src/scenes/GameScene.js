@@ -377,9 +377,9 @@ export class GameScene extends Phaser.Scene {
         const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         for (let i = 0; i < 3; i++) {
             const type = types[Phaser.Math.Between(0, types.length - 1)];
-            // Spawn near the truck area (bottom-left)
-            const rx = Phaser.Math.FloatBetween(60, 250);
-            const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 220, this.cameras.main.height - 60);
+            // Spawn near the truck area (truck is at 300, h-180)
+            const rx = Phaser.Math.FloatBetween(230, 380);
+            const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 240, this.cameras.main.height - 140);
 
             const item = this.add.sprite(rx, ry, type);
             item.setOrigin(0.5, 0.75);
@@ -935,9 +935,9 @@ export class GameScene extends Phaser.Scene {
     spawnOneFurniture() {
         const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
-        // Spawn near the truck area
-        const rx = Phaser.Math.FloatBetween(60, 250);
-        const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 220, this.cameras.main.height - 60);
+        // Spawn near the truck area (truck is at 300, h-180)
+        const rx = Phaser.Math.FloatBetween(230, 380);
+        const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 240, this.cameras.main.height - 140);
 
         const item = this.add.sprite(rx, ry, type);
         item.setOrigin(0.5, 0.75);
