@@ -301,8 +301,9 @@ export class GameScene extends Phaser.Scene {
             const dy = targetY - sy;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            sheep.vx = (dx / dist) * 0.05;
-            sheep.vy = (dy / dist) * 0.05;
+            const sheepSpeed = 0.03 + (this.currentLevel * 0.005);
+            sheep.vx = (dx / dist) * sheepSpeed;
+            sheep.vy = (dy / dist) * sheepSpeed;
             sheep.isBoss = false;
 
             this.sheepGroup.add(sheep);
