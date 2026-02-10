@@ -769,6 +769,10 @@ export class GameScene extends Phaser.Scene {
 
     // === DOG ===
     spawnDog() {
+        // Max 1 dog at a time
+        if (this.activeDog) return;
+        this.activeDog = true;
+
         const cx = this.cameras.main.width / 2;
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
@@ -802,7 +806,7 @@ export class GameScene extends Phaser.Scene {
             if (sheepList.length === 0) {
                 this.tweens.add({
                     targets: dog, alpha: 0, duration: 800,
-                    onComplete: () => dog.destroy()
+                    onComplete: () => { this.activeDog = false; dog.destroy(); }
                 });
                 return;
             }
@@ -834,7 +838,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     handleMovement() {
-        const speed = 7.0 * this.speedMultiplier;
+        const speed = 8.0 * this.speedMultiplier;
         let dx = 0;
         let dy = 0;
 
@@ -910,7 +914,7 @@ export class GameScene extends Phaser.Scene {
             }
         } else {
             let closest = null;
-            let minC = 60; // pixel pickup range
+            let minC = 80; // pixel pickup range
 
             this.furnitureGroup.children.iterate(item => {
                 const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y);
