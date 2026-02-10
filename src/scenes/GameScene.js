@@ -23,6 +23,8 @@ export class GameScene extends Phaser.Scene {
 
         // Highscore
         this.highscore = parseInt(localStorage.getItem('flyttsmart_highscore')) || 0;
+        this.initialsSubmitted = false;
+        this.playerInitials = '';
     }
 
     create() {
@@ -324,7 +326,7 @@ export class GameScene extends Phaser.Scene {
         if (this.timerEvent) this.timerEvent.destroy();
         if (this.difficultyEvent) this.difficultyEvent.destroy();
 
-        // Update highscore
+        // Update local highscore
         if (this.score > this.highscore) {
             this.highscore = this.score;
             localStorage.setItem('flyttsmart_highscore', this.highscore);
@@ -340,12 +342,121 @@ export class GameScene extends Phaser.Scene {
             this.bgMusic.stop();
         }
 
-        this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 - 40, 'GAME OVER\n' + reason, { fontSize: '48px', fill: '#ff0000', fontFamily: 'Fredoka One', stroke: '#fff', strokeThickness: 4, align: 'center' }).setOrigin(0.5).setDepth(2000);
+        const cx = this.cameras.main.width / 2;
+        const cy = this.cameras.main.height / 2;
 
-        this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 40, 'Highscore: ' + this.highscore, { fontSize: '32px', fill: '#f1c40f', fontFamily: 'Fredoka One' }).setOrigin(0.5).setDepth(2000);
+        // Dark overlay
+        const overlay = this.add.rectangle(cx, cy, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.7).setDepth(2000);
 
-        const restart = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 120, 'Press ENTER to Restart', { fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: 10, fontFamily: 'Fredoka One' }).setOrigin(0.5).setInteractive().setDepth(2000);
+        this.add.text(cx, cy - 140, 'GAME OVER\n' + reason, {
+            fontSize: '40px', fill: '#ff0000', fontFamily: 'Fredoka One',
+            stroke: '#fff', strokeThickness: 4, align: 'center'
+        }).setOrigin(0.5).setDepth(2001);
+
+        this.add.text(cx, cy - 70, 'Poäng: ' + this.score + '  |  Bana: ' + this.currentLevel, {
+            fontSize: '28px', fill: '#fff', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setDepth(2001);
+
+        // Initials input
+        this.add.text(cx, cy - 30, 'Skriv dina initialer:', {
+            fontSize: '24px', fill: '#f1c40f', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setDepth(2001);
+
+        this.playerInitials = '';
+        this.initialsText = this.add.text(cx, cy + 10, '_ _ _', {
+            fontSize: '48px', fill: '#fff', fontFamily: 'Fredoka One', letterSpacing: 16
+        }).setOrigin(0.5).setDepth(2001);
+
+        // Listen for letter keys
+        this.input.keyboard.on('keydown', (event) => {
+            if (this.initialsSubmitted) return;
+
+            const key = event.key.toUpperCase();
+            if (/^[A-ZÅÄÖ0-9]$/.test(key) && this.playerInitials.length < 3) {
+                this.playerInitials += key;
+                const display = this.playerInitials.split('').join(' ').padEnd(5, ' _');
+                this.initialsText.setText(display);
+
+                if (this.playerInitials.length === 3) {
+                    this.initialsSubmitted = true;
+                    this.submitScore(this.playerInitials, this.score, this.currentLevel);
+                }
+            }
+            if (event.key === 'Backspace' && this.playerInitials.length > 0) {
+                this.playerInitials = this.playerInitials.slice(0, -1);
+                const display = this.playerInitials.split('').join(' ').padEnd(5, ' _');
+                this.initialsText.setText(display || '_ _ _');
+            }
+        });
+
+        // Leaderboard area
+        this.leaderboardY = cy + 70;
+        this.add.text(cx, this.leaderboardY, '🏆 TOPPLISTA', {
+            fontSize: '28px', fill: '#f1c40f', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setDepth(2001);
+
+        this.loadLeaderboard();
+
+        // Restart button (below leaderboard)
+        const restart = this.add.text(cx, cy + 280, 'ENTER = Starta om', {
+            fontSize: '28px', fill: '#fff', backgroundColor: '#27ae60',
+            padding: { x: 20, y: 10 }, fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(2001);
         restart.on('pointerdown', () => this.restartGame());
+    }
+
+    submitScore(initials, score, level) {
+        if (!window.leaderboardDB) return;
+
+        const ref = window.leaderboardDB.ref('leaderboard');
+        ref.push({
+            name: initials,
+            score: score,
+            level: level,
+            date: new Date().toISOString()
+        }).then(() => {
+            this.loadLeaderboard();
+        }).catch(err => {
+            console.log('Could not save score:', err);
+        });
+    }
+
+    loadLeaderboard() {
+        if (!window.leaderboardDB) return;
+
+        const cx = this.cameras.main.width / 2;
+        const ref = window.leaderboardDB.ref('leaderboard');
+
+        ref.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
+            const scores = [];
+            snapshot.forEach(child => {
+                scores.push(child.val());
+            });
+            scores.sort((a, b) => b.score - a.score);
+
+            // Clear old leaderboard texts
+            if (this.leaderboardTexts) {
+                this.leaderboardTexts.forEach(t => t.destroy());
+            }
+            this.leaderboardTexts = [];
+
+            scores.forEach((entry, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                const txt = this.add.text(cx, this.leaderboardY + 40 + (i * 30),
+                    `${medal} ${entry.name} - ${entry.score}p (Bana ${entry.level || '?'})`, {
+                    fontSize: '20px', fill: '#fff', fontFamily: 'Fredoka One'
+                }).setOrigin(0.5).setDepth(2001);
+                this.leaderboardTexts.push(txt);
+            });
+
+            if (scores.length === 0) {
+                const txt = this.add.text(cx, this.leaderboardY + 40,
+                    'Inga poäng än - bli den första!', {
+                    fontSize: '20px', fill: '#aaa', fontFamily: 'Fredoka One'
+                }).setOrigin(0.5).setDepth(2001);
+                this.leaderboardTexts.push(txt);
+            }
+        });
     }
 
     update(time, delta) {

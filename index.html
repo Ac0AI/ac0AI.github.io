@@ -8,6 +8,23 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBGg0UvRpNG4Of-50_hb7HOYunf4Qgc01g",
+            authDomain: "fsgame-59bef.firebaseapp.com",
+            databaseURL: "https://fsgame-59bef-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "fsgame-59bef",
+            storageBucket: "fsgame-59bef.firebasestorage.app",
+            messagingSenderId: "68793090877",
+            appId: "1:68793090877:web:ac1b2f330387fa05e43b54"
+        };
+        firebase.initializeApp(firebaseConfig);
+        window.leaderboardDB = firebase.database();
+    </script>
 </head>
 
 <body>
