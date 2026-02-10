@@ -159,11 +159,10 @@ export class GameScene extends Phaser.Scene {
         // Sheep Difficulty Scaler - start slower
         this.sheepSpawnCount = 1;
         this.difficultyEvent = this.time.addEvent({
-            delay: 10000, // Changed from 5s to 10s
+            delay: 20000, // Slower ramp
             callback: () => {
-                this.sheepSpawnCount += 1; // Changed from *= 2 to += 1 for smoother ramp
-                // Cap to prevent complete chaos
-                if (this.sheepSpawnCount > 16) this.sheepSpawnCount = 16;
+                this.sheepSpawnCount += 1;
+                if (this.sheepSpawnCount > 8) this.sheepSpawnCount = 8;
             },
             loop: true
         });
