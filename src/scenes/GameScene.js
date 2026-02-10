@@ -834,7 +834,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     handleMovement() {
-        const speed = 5.0 * this.speedMultiplier;
+        const speed = 7.0 * this.speedMultiplier;
         let dx = 0;
         let dy = 0;
 
