@@ -93,7 +93,7 @@ export class GameScene extends Phaser.Scene {
         this.sound.removeAll();
 
         // Background music - use saved volume or default
-        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.4;
+        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.25;
         this.bgMusic = this.sound.add('bgmusic', { loop: true, volume: this.musicVolume });
 
         // Level complete jingles (one-shot sounds)
@@ -963,7 +963,7 @@ export class GameScene extends Phaser.Scene {
 
         // Volume control (top-right corner)
         const camW = this.cameras.main.width;
-        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.4;
+        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.25;
 
         // Mute button
         this.muteBtn = this.add.text(camW - 50, 16, '🔊', { fontSize: '32px' })
@@ -978,7 +978,7 @@ export class GameScene extends Phaser.Scene {
                     this.muteBtn.setText('🔇');
                     localStorage.setItem('flyttsmart_volume', '0');
                 } else {
-                    this.bgMusic.setVolume(this.musicVolume || 0.4);
+                    this.bgMusic.setVolume(this.musicVolume || 0.25);
                     this.muteBtn.setText('🔊');
                     localStorage.setItem('flyttsmart_volume', String(this.musicVolume || 0.4));
                 }
