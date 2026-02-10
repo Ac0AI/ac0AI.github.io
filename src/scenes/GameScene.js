@@ -303,9 +303,13 @@ export class GameScene extends Phaser.Scene {
 
             // Check collision with player (unless grace period)
             if (!this.hasGracePeriod) {
-                const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, sheep.x, sheep.y);
-                // Reduced from 50 to 35 for less hair-trigger collisions
-                if (dist < 35) {
+                // Use isometric distance - more reliable than screen pixels
+                const isoDist = Phaser.Math.Distance.Between(
+                    this.player.isoX, this.player.isoY,
+                    sheep.isoX, sheep.isoY
+                );
+                // Collision radius: tighter to avoid ghost hits
+                if (isoDist < 1.2) {
                     this.gameOver("KROCKAD AV FÅR!");
                 }
             }
