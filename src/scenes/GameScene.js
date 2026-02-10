@@ -18,8 +18,11 @@ export class GameScene extends Phaser.Scene {
         // Level system
         this.currentLevel = 1;
         this.itemsDelivered = 0;
-        this.levelGoal = 15; // Items needed per level
+        this.levelGoal = 15;
         this.maxLevel = 5;
+
+        // Highscore
+        this.highscore = parseInt(localStorage.getItem('flyttsmart_highscore')) || 0;
     }
 
     create() {
@@ -320,6 +323,12 @@ export class GameScene extends Phaser.Scene {
         this.isGameOver = true;
         if (this.timerEvent) this.timerEvent.destroy();
         if (this.difficultyEvent) this.difficultyEvent.destroy();
+
+        // Update highscore
+        if (this.score > this.highscore) {
+            this.highscore = this.score;
+            localStorage.setItem('flyttsmart_highscore', this.highscore);
+        }
 
         // Play roadkill sound if died from sheep
         if (reason.includes('FÅR')) {
