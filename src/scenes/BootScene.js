@@ -95,6 +95,81 @@ export class BootScene extends Phaser.Scene {
         tvG.generateTexture('tv', 50, 35);
         tvG.destroy();
 
+        // Lamp - floor lamp
+        const lampG = this.make.graphics({ x: 0, y: 0, add: false });
+        lampG.fillStyle(0xf1c40f, 1); // Shade
+        lampG.fillTriangle(15, 0, 0, 25, 30, 25);
+        lampG.fillStyle(0x7f8c8d, 1); // Pole
+        lampG.fillRect(13, 25, 4, 35);
+        lampG.fillStyle(0x95a5a6, 1); // Base
+        lampG.fillCircle(15, 62, 8);
+        lampG.generateTexture('lamp', 30, 70);
+        lampG.destroy();
+
+        // Plant - potted plant
+        const plantG = this.make.graphics({ x: 0, y: 0, add: false });
+        plantG.fillStyle(0xe67e22, 1); // Pot
+        plantG.fillRoundedRect(8, 30, 24, 20, 3);
+        plantG.fillStyle(0x27ae60, 1); // Leaves
+        plantG.fillCircle(20, 20, 12);
+        plantG.fillCircle(12, 25, 8);
+        plantG.fillCircle(28, 25, 8);
+        plantG.fillCircle(20, 12, 8);
+        plantG.fillStyle(0x2ecc71, 1);
+        plantG.fillCircle(16, 16, 6);
+        plantG.fillCircle(24, 18, 6);
+        plantG.generateTexture('plant', 40, 50);
+        plantG.destroy();
+
+        // Bookshelf
+        const shelfG = this.make.graphics({ x: 0, y: 0, add: false });
+        shelfG.fillStyle(0x8B4513, 1); // Frame
+        shelfG.fillRect(0, 0, 45, 55);
+        shelfG.fillStyle(0xA0522D, 1); // Shelves
+        shelfG.fillRect(0, 18, 45, 3);
+        shelfG.fillRect(0, 36, 45, 3);
+        // Books
+        shelfG.fillStyle(0xe74c3c, 1); shelfG.fillRect(4, 2, 6, 15);
+        shelfG.fillStyle(0x3498db, 1); shelfG.fillRect(12, 4, 5, 13);
+        shelfG.fillStyle(0x2ecc71, 1); shelfG.fillRect(19, 2, 7, 15);
+        shelfG.fillStyle(0xf39c12, 1); shelfG.fillRect(28, 3, 5, 14);
+        shelfG.fillStyle(0x9b59b6, 1); shelfG.fillRect(35, 2, 6, 15);
+        shelfG.fillStyle(0x1abc9c, 1); shelfG.fillRect(4, 21, 6, 14);
+        shelfG.fillStyle(0xe67e22, 1); shelfG.fillRect(12, 22, 7, 13);
+        shelfG.fillStyle(0x2980b9, 1); shelfG.fillRect(21, 21, 5, 14);
+        shelfG.fillStyle(0xc0392b, 1); shelfG.fillRect(28, 23, 6, 12);
+        shelfG.fillStyle(0x8e44ad, 1); shelfG.fillRect(36, 21, 5, 14);
+        shelfG.generateTexture('bookshelf', 45, 55);
+        shelfG.destroy();
+
+        // Chair
+        const chairG = this.make.graphics({ x: 0, y: 0, add: false });
+        chairG.fillStyle(0x1abc9c, 1); // Back
+        chairG.fillRoundedRect(5, 0, 25, 20, 4);
+        chairG.fillStyle(0x16a085, 1); // Seat
+        chairG.fillRoundedRect(2, 18, 30, 12, 3);
+        chairG.fillStyle(0x2c3e50, 1); // Legs
+        chairG.fillRect(5, 28, 4, 10);
+        chairG.fillRect(25, 28, 4, 10);
+        chairG.generateTexture('chair', 34, 38);
+        chairG.destroy();
+
+        // Fridge
+        const fridgeG = this.make.graphics({ x: 0, y: 0, add: false });
+        fridgeG.fillStyle(0xbdc3c7, 1); // Body
+        fridgeG.fillRoundedRect(0, 0, 35, 55, 3);
+        fridgeG.fillStyle(0xecf0f1, 1); // Top door
+        fridgeG.fillRect(3, 3, 29, 20);
+        fridgeG.fillStyle(0xecf0f1, 1); // Bottom door
+        fridgeG.fillRect(3, 26, 29, 26);
+        fridgeG.fillStyle(0x95a5a6, 1); // Handle
+        fridgeG.fillRect(28, 10, 3, 8);
+        fridgeG.fillRect(28, 35, 3, 8);
+        fridgeG.lineStyle(1, 0x7f8c8d); // Divider
+        fridgeG.lineBetween(0, 24, 35, 24);
+        fridgeG.generateTexture('fridge', 35, 55);
+        fridgeG.destroy();
+
         // Environment
         const tileG = this.make.graphics({ x: 0, y: 0, add: false });
         tileG.fillStyle(0xffffff, 0.1); // Slight highlight
