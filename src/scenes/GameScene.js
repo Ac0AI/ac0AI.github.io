@@ -22,7 +22,7 @@ export class GameScene extends Phaser.Scene {
         this.maxLevel = 5;
 
         // Highscore
-        this.highscore = parseInt(localStorage.getItem('flyttsmart_highscore')) || 0;
+        this.highscore = parseInt(localStorage.getItem('flyttsmart_hs_v2')) || 0;
         this.initialsSubmitted = false;
         this.playerInitials = '';
 
@@ -489,7 +489,7 @@ export class GameScene extends Phaser.Scene {
         // Update local highscore
         if (this.score > this.highscore) {
             this.highscore = this.score;
-            localStorage.setItem('flyttsmart_highscore', this.highscore);
+            localStorage.setItem('flyttsmart_hs_v2', this.highscore);
         }
 
         // Play roadkill sound if died from sheep
