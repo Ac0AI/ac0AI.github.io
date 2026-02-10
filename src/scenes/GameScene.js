@@ -165,9 +165,7 @@ export class GameScene extends Phaser.Scene {
             loop: true
         });
 
-        // Adjust camera to fit house
-        this.cameras.main.setZoom(0.8);
-        this.cameras.main.centerOn(this.cameras.main.width / 2, this.cameras.main.height / 2);
+        // No zoom needed for top-down
     }
 
     restartGame() {
@@ -339,30 +337,32 @@ export class GameScene extends Phaser.Scene {
     }
 
     createGround() {
-        // Use single cohesive background
-        const bg = this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'ground_bg');
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        const bg = this.add.image(w / 2, h / 2, 'ground_bg');
         bg.setOrigin(0.5, 0.5);
         bg.setDepth(-1000);
 
-        // Scale to cover screen if needed (assuming 1024x1024 or similar)
-        // increased scale to ensure house fits
-        bg.setScale(3);
+        // Scale to cover full viewport
+        const scaleX = w / bg.width;
+        const scaleY = h / bg.height;
+        bg.setScale(Math.max(scaleX, scaleY) * 1.1);
     }
 
     createZones() {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
 
-        // Truck bottom-left
-        const truckX = 130;
-        const truckY = h - 120;
+        // Truck bottom-left (more inward)
+        const truckX = 160;
+        const truckY = h - 100;
         this.truck = this.add.image(truckX, truckY, 'truck');
         this.truck.setOrigin(0.5, 0.85);
         this.truck.setDepth(truckY);
 
-        // House top-right
-        const houseX = w - 130;
-        const houseY = 140;
+        // House top-right (more inward)
+        const houseX = w - 160;
+        const houseY = 120;
         this.house = this.add.image(houseX, houseY, 'house');
         this.house.setOrigin(0.5, 0.85);
         this.house.setDepth(houseY);
