@@ -60,115 +60,31 @@ export class BootScene extends Phaser.Scene {
         playerG.generateTexture('player', 48, 56);
         playerG.destroy();
 
-        // Sofa - red couch
-        const sofaG = this.make.graphics({ x: 0, y: 0, add: false });
-        sofaG.fillStyle(0xe74c3c, 1);
-        sofaG.fillRoundedRect(0, 10, 64, 30, 6);
-        sofaG.fillStyle(0xc0392b, 1);
-        sofaG.fillRoundedRect(0, 0, 64, 18, 4);
-        sofaG.fillStyle(0x2c3e50, 1); // Legs
-        sofaG.fillRect(4, 36, 8, 8);
-        sofaG.fillRect(52, 36, 8, 8);
-        sofaG.generateTexture('sofa', 64, 44);
-        sofaG.destroy();
+        // === EMOJI TEXTURES ===
+        const makeEmoji = (key, emoji, size) => {
+            const canvas = this.textures.createCanvas(key, size, size);
+            const ctx = canvas.context;
+            ctx.font = `${size * 0.8}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, size / 2, size / 2);
+            canvas.refresh();
+        };
 
-        // Box - cardboard box
-        const boxG = this.make.graphics({ x: 0, y: 0, add: false });
-        boxG.fillStyle(0xf39c12, 1);
-        boxG.fillRect(0, 0, 40, 40);
-        boxG.lineStyle(2, 0xe67e22);
-        boxG.strokeRect(0, 0, 40, 40);
-        boxG.lineStyle(2, 0xd35400);
-        boxG.lineBetween(0, 8, 40, 8); // Flap
-        boxG.lineBetween(20, 8, 20, 40); // Split
-        boxG.generateTexture('box', 40, 40);
-        boxG.destroy();
+        // Furniture
+        makeEmoji('sofa', '🛋️', 64);
+        makeEmoji('box', '📦', 48);
+        makeEmoji('tv', '📺', 52);
+        makeEmoji('lamp', '💡', 48);
+        makeEmoji('plant', '🪴', 48);
+        makeEmoji('bookshelf', '📚', 52);
+        makeEmoji('chair', '🪑', 48);
+        makeEmoji('fridge', '🧊', 48);
 
-        // TV
-        const tvG = this.make.graphics({ x: 0, y: 0, add: false });
-        tvG.fillStyle(0x2c3e50, 1);
-        tvG.fillRect(0, 0, 50, 35);
-        tvG.fillStyle(0x3498db, 1); // Screen
-        tvG.fillRect(4, 4, 42, 24);
-        tvG.fillStyle(0x34495e, 1); // Base
-        tvG.fillRect(20, 30, 10, 5);
-        tvG.generateTexture('tv', 50, 35);
-        tvG.destroy();
+        // Truck & House
+        makeEmoji('truck', '🚚', 120);
+        makeEmoji('house', '🏠', 140);
 
-        // Lamp - floor lamp
-        const lampG = this.make.graphics({ x: 0, y: 0, add: false });
-        lampG.fillStyle(0xf1c40f, 1); // Shade
-        lampG.fillTriangle(15, 0, 0, 25, 30, 25);
-        lampG.fillStyle(0x7f8c8d, 1); // Pole
-        lampG.fillRect(13, 25, 4, 35);
-        lampG.fillStyle(0x95a5a6, 1); // Base
-        lampG.fillCircle(15, 62, 8);
-        lampG.generateTexture('lamp', 30, 70);
-        lampG.destroy();
-
-        // Plant - potted plant
-        const plantG = this.make.graphics({ x: 0, y: 0, add: false });
-        plantG.fillStyle(0xe67e22, 1); // Pot
-        plantG.fillRoundedRect(8, 30, 24, 20, 3);
-        plantG.fillStyle(0x27ae60, 1); // Leaves
-        plantG.fillCircle(20, 20, 12);
-        plantG.fillCircle(12, 25, 8);
-        plantG.fillCircle(28, 25, 8);
-        plantG.fillCircle(20, 12, 8);
-        plantG.fillStyle(0x2ecc71, 1);
-        plantG.fillCircle(16, 16, 6);
-        plantG.fillCircle(24, 18, 6);
-        plantG.generateTexture('plant', 40, 50);
-        plantG.destroy();
-
-        // Bookshelf
-        const shelfG = this.make.graphics({ x: 0, y: 0, add: false });
-        shelfG.fillStyle(0x8B4513, 1); // Frame
-        shelfG.fillRect(0, 0, 45, 55);
-        shelfG.fillStyle(0xA0522D, 1); // Shelves
-        shelfG.fillRect(0, 18, 45, 3);
-        shelfG.fillRect(0, 36, 45, 3);
-        // Books
-        shelfG.fillStyle(0xe74c3c, 1); shelfG.fillRect(4, 2, 6, 15);
-        shelfG.fillStyle(0x3498db, 1); shelfG.fillRect(12, 4, 5, 13);
-        shelfG.fillStyle(0x2ecc71, 1); shelfG.fillRect(19, 2, 7, 15);
-        shelfG.fillStyle(0xf39c12, 1); shelfG.fillRect(28, 3, 5, 14);
-        shelfG.fillStyle(0x9b59b6, 1); shelfG.fillRect(35, 2, 6, 15);
-        shelfG.fillStyle(0x1abc9c, 1); shelfG.fillRect(4, 21, 6, 14);
-        shelfG.fillStyle(0xe67e22, 1); shelfG.fillRect(12, 22, 7, 13);
-        shelfG.fillStyle(0x2980b9, 1); shelfG.fillRect(21, 21, 5, 14);
-        shelfG.fillStyle(0xc0392b, 1); shelfG.fillRect(28, 23, 6, 12);
-        shelfG.fillStyle(0x8e44ad, 1); shelfG.fillRect(36, 21, 5, 14);
-        shelfG.generateTexture('bookshelf', 45, 55);
-        shelfG.destroy();
-
-        // Chair
-        const chairG = this.make.graphics({ x: 0, y: 0, add: false });
-        chairG.fillStyle(0x1abc9c, 1); // Back
-        chairG.fillRoundedRect(5, 0, 25, 20, 4);
-        chairG.fillStyle(0x16a085, 1); // Seat
-        chairG.fillRoundedRect(2, 18, 30, 12, 3);
-        chairG.fillStyle(0x2c3e50, 1); // Legs
-        chairG.fillRect(5, 28, 4, 10);
-        chairG.fillRect(25, 28, 4, 10);
-        chairG.generateTexture('chair', 34, 38);
-        chairG.destroy();
-
-        // Fridge
-        const fridgeG = this.make.graphics({ x: 0, y: 0, add: false });
-        fridgeG.fillStyle(0xbdc3c7, 1); // Body
-        fridgeG.fillRoundedRect(0, 0, 35, 55, 3);
-        fridgeG.fillStyle(0xecf0f1, 1); // Top door
-        fridgeG.fillRect(3, 3, 29, 20);
-        fridgeG.fillStyle(0xecf0f1, 1); // Bottom door
-        fridgeG.fillRect(3, 26, 29, 26);
-        fridgeG.fillStyle(0x95a5a6, 1); // Handle
-        fridgeG.fillRect(28, 10, 3, 8);
-        fridgeG.fillRect(28, 35, 3, 8);
-        fridgeG.lineStyle(1, 0x7f8c8d); // Divider
-        fridgeG.lineBetween(0, 24, 35, 24);
-        fridgeG.generateTexture('fridge', 35, 55);
-        fridgeG.destroy();
 
         // Environment
         const tileG = this.make.graphics({ x: 0, y: 0, add: false });
@@ -184,42 +100,6 @@ export class BootScene extends Phaser.Scene {
         tileG.generateTexture('tile', 64, 32);
         tileG.destroy();
 
-        // Truck
-        const truckG = this.make.graphics({ x: 0, y: 0, add: false });
-        // Cargo area
-        truckG.fillStyle(0x8e44ad, 1);
-        truckG.fillRect(0, 10, 120, 70);
-        // Cab
-        truckG.fillStyle(0x9b59b6, 1);
-        truckG.fillRect(120, 35, 50, 45);
-        // Wheels
-        truckG.fillStyle(0x2c3e50, 1);
-        truckG.fillCircle(30, 80, 15);
-        truckG.fillCircle(90, 80, 15);
-        truckG.fillCircle(145, 80, 15);
-        // Window
-        truckG.fillStyle(0x87CEEB, 1);
-        truckG.fillRect(125, 40, 35, 20);
-        truckG.generateTexture('truck', 180, 100);
-        truckG.destroy();
-
-        // House
-        const houseG = this.make.graphics({ x: 0, y: 0, add: false });
-        // Roof
-        houseG.fillStyle(0xc0392b, 1);
-        houseG.fillTriangle(100, 0, 0, 60, 200, 60);
-        // Body
-        houseG.fillStyle(0x27ae60, 1);
-        houseG.fillRect(10, 60, 180, 90);
-        // Door
-        houseG.fillStyle(0x8B4513, 1);
-        houseG.fillRect(80, 90, 40, 60);
-        // Window
-        houseG.fillStyle(0x87CEEB, 1);
-        houseG.fillRect(30, 80, 35, 35);
-        houseG.fillRect(135, 80, 35, 35);
-        houseG.generateTexture('house', 200, 150);
-        houseG.destroy();
         // Sheep - Fluffy Cloud Style
         const sheepG = this.make.graphics({ x: 0, y: 0, add: false });
 
