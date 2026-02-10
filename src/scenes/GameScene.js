@@ -169,35 +169,120 @@ export class GameScene extends Phaser.Scene {
     createStartScreen() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        const cx = width / 2;
+        const cy = height / 2;
 
         this.startOverlay = this.add.container(0, 0);
 
-        const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
-        const title = this.add.text(width / 2, height / 2 - 50, 'FLYTTSMART', {
-            fontSize: '64px',
+        // Dark overlay
+        const bg = this.add.rectangle(cx, cy, width, height, 0x1a1a2e, 0.92);
+
+        // Floating emoji decorations
+        const emojis = ['📦', '🛋️', '📺', '🪑', '🐑', '🚚', '🏠', '🎮', '💡', '📚'];
+        const floatingEmojis = [];
+        emojis.forEach((emoji, i) => {
+            const ex = Phaser.Math.Between(40, width - 40);
+            const ey = Phaser.Math.Between(30, height - 30);
+            const e = this.add.text(ex, ey, emoji, {
+                fontSize: `${Phaser.Math.Between(20, 36)}px`
+            }).setOrigin(0.5).setAlpha(0.15);
+            floatingEmojis.push(e);
+
+            // Gentle float animation
+            this.tweens.add({
+                targets: e,
+                y: ey + Phaser.Math.Between(-20, 20),
+                x: ex + Phaser.Math.Between(-15, 15),
+                duration: Phaser.Math.Between(2000, 4000),
+                yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+                delay: i * 200
+            });
+        });
+
+        // Title with drop-in animation
+        const title = this.add.text(cx, cy - 100, '🚚 FLYTTSMART 🏠', {
+            fontSize: '52px',
             fill: '#00AEEF',
             fontFamily: 'Fredoka One',
-            stroke: '#fff',
-            strokeThickness: 2
-        }).setOrigin(0.5);
+            stroke: '#000',
+            strokeThickness: 6
+        }).setOrigin(0.5).setScale(0.3).setAlpha(0);
 
-        const subtitle = this.add.text(width / 2, height / 2 + 20, 'Flytta möblerna till huset!', {
-            fontSize: '24px',
-            fill: '#fff',
+        this.tweens.add({
+            targets: title,
+            scaleX: 1, scaleY: 1, alpha: 1,
+            duration: 800, ease: 'Back.easeOut'
+        });
+
+        // Tagline
+        const tagline = this.add.text(cx, cy - 40, 'Flytta möblerna — Undvik fåren!', {
+            fontSize: '22px',
+            fill: '#f1c40f',
             fontFamily: 'Fredoka One'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setAlpha(0);
 
-        const startBtn = this.add.text(width / 2, height / 2 + 100, 'Press ENTER to Start', {
-            fontSize: '32px',
+        this.tweens.add({
+            targets: tagline, alpha: 1,
+            duration: 600, delay: 500
+        });
+
+        // Instructions box
+        const instructions = this.add.text(cx, cy + 30,
+            '🎯 Bär saker från 🚚 till 🏠\n' +
+            '⬆️⬇️⬅️➡️  Flytta  |  SPACE  Plocka/Släpp\n' +
+            '⭐ Samla power-ups  |  🐑 Undvik fåren!', {
+            fontSize: '16px',
+            fill: '#ccc',
+            fontFamily: 'Fredoka One',
+            align: 'center',
+            lineSpacing: 8
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.tweens.add({
+            targets: instructions, alpha: 1,
+            duration: 600, delay: 800
+        });
+
+        // Highscore display
+        const hsText = this.add.text(cx, cy + 110,
+            this.highscore > 0 ? `🏆 Rekord: ${this.highscore}p` : '', {
+            fontSize: '20px',
+            fill: '#e67e22',
+            fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.tweens.add({
+            targets: hsText, alpha: 1,
+            duration: 600, delay: 1000
+        });
+
+        // Start button with pulse
+        const startBtn = this.add.text(cx, cy + 160, '▶  STARTA SPELET', {
+            fontSize: '30px',
             fill: '#fff',
             backgroundColor: '#27ae60',
-            padding: { x: 20, y: 10 },
+            padding: { x: 24, y: 12 },
             fontFamily: 'Fredoka One'
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setAlpha(0);
+
+        this.tweens.add({
+            targets: startBtn, alpha: 1,
+            duration: 400, delay: 1200,
+            onComplete: () => {
+                this.tweens.add({
+                    targets: startBtn,
+                    scaleX: 1.05, scaleY: 1.05,
+                    yoyo: true, repeat: -1,
+                    duration: 600, ease: 'Sine.easeInOut'
+                });
+            }
+        });
 
         startBtn.on('pointerdown', () => this.startGame());
+        startBtn.on('pointerover', () => startBtn.setStyle({ backgroundColor: '#2ecc71' }));
+        startBtn.on('pointerout', () => startBtn.setStyle({ backgroundColor: '#27ae60' }));
 
-        this.startOverlay.add([bg, title, subtitle, startBtn]);
+        this.startOverlay.add([bg, ...floatingEmojis, title, tagline, instructions, hsText, startBtn]);
         this.startOverlay.setDepth(1000);
     }
 
