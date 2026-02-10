@@ -516,7 +516,7 @@ export class GameScene extends Phaser.Scene {
                     this.player.isoX, this.player.isoY,
                     sheep.isoX, sheep.isoY
                 );
-                if (isoDist < 1.2) {
+                if (isoDist < 0.9) {
                     this.gameOver("KROCKAD AV FÅR!");
                 }
             }
