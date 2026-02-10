@@ -21,8 +21,8 @@ export class GameScene extends Phaser.Scene {
         this.levelGoal = 15;
         this.maxLevel = 5;
 
-        // Highscore
-        this.highscore = parseInt(localStorage.getItem('flyttsmart_hs_v2')) || 0;
+        // Highscore (no longer using localStorage)
+        this.highscore = 0;
         this.initialsSubmitted = false;
         this.playerInitials = '';
 
@@ -242,7 +242,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Instructions box
-        const instructions = this.add.text(cx, cy + 30,
+        const instructions = this.add.text(cx, cy - 20,
             '🎯 Bär saker från 🚚 till 🏠\n' +
             '⬆️⬇️⬅️➡️  Flytta  |  SPACE  Plocka/Släpp\n' +
             '⭐ Samla power-ups  |  🐑 Undvik fåren!', {
@@ -258,21 +258,8 @@ export class GameScene extends Phaser.Scene {
             duration: 600, delay: 800
         });
 
-        // Highscore display
-        const hsText = this.add.text(cx, cy + 110,
-            this.highscore > 0 ? `🏆 Rekord: ${this.highscore}p` : '', {
-            fontSize: '20px',
-            fill: '#e67e22',
-            fontFamily: 'Fredoka One'
-        }).setOrigin(0.5).setAlpha(0);
-
-        this.tweens.add({
-            targets: hsText, alpha: 1,
-            duration: 600, delay: 1000
-        });
-
         // Start button with pulse
-        const startBtn = this.add.text(cx, cy + 160, '▶  STARTA SPELET', {
+        const startBtn = this.add.text(cx, cy + 70, '▶  STARTA SPELET', {
             fontSize: '30px',
             fill: '#fff',
             backgroundColor: '#27ae60',
@@ -297,7 +284,62 @@ export class GameScene extends Phaser.Scene {
         startBtn.on('pointerover', () => startBtn.setStyle({ backgroundColor: '#2ecc71' }));
         startBtn.on('pointerout', () => startBtn.setStyle({ backgroundColor: '#27ae60' }));
 
-        this.startOverlay.add([bg, ...floatingEmojis, title, tagline, instructions, hsText, startBtn]);
+        // Leaderboard header
+        const lbTitle = this.add.text(cx, cy + 130, '🏆 TOPPLISTA', {
+            fontSize: '22px', fill: '#f1c40f', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.tweens.add({
+            targets: lbTitle, alpha: 1,
+            duration: 600, delay: 1400
+        });
+
+        // Load leaderboard from Firebase
+        const lbTexts = [];
+        const lbLoading = this.add.text(cx, cy + 160, 'Laddar...', {
+            fontSize: '16px', fill: '#888', fontFamily: 'Fredoka One'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.tweens.add({
+            targets: lbLoading, alpha: 1,
+            duration: 400, delay: 1500
+        });
+
+        try {
+            const db = firebase.database();
+            db.ref('leaderboard').orderByChild('score').limitToLast(5).once('value', (snapshot) => {
+                lbLoading.destroy();
+                const scores = [];
+                snapshot.forEach(child => {
+                    scores.push(child.val());
+                });
+                scores.sort((a, b) => b.score - a.score);
+
+                if (scores.length === 0) {
+                    const noScores = this.add.text(cx, cy + 160, 'Inga poäng ännu!', {
+                        fontSize: '16px', fill: '#888', fontFamily: 'Fredoka One'
+                    }).setOrigin(0.5);
+                    lbTexts.push(noScores);
+                    this.startOverlay.add(noScores);
+                } else {
+                    const medals = ['🥇', '🥈', '🥉'];
+                    scores.forEach((entry, i) => {
+                        const medal = medals[i] || '  ';
+                        const color = i === 0 ? '#f1c40f' : i < 3 ? '#bdc3c7' : '#fff';
+                        const txt = this.add.text(cx, cy + 158 + (i * 24),
+                            `${medal} ${entry.name}  ${entry.score}p  (Bana ${entry.level || '?'})`, {
+                            fontSize: '16px', fill: color, fontFamily: 'Fredoka One'
+                        }).setOrigin(0.5);
+                        lbTexts.push(txt);
+                        this.startOverlay.add(txt);
+                    });
+                }
+            });
+        } catch (e) {
+            lbLoading.setText('Kunde inte ladda topplista');
+        }
+
+        this.startOverlay.add([bg, ...floatingEmojis, title, tagline, instructions, startBtn, lbTitle, lbLoading]);
         this.startOverlay.setDepth(1000);
     }
 
@@ -486,10 +528,9 @@ export class GameScene extends Phaser.Scene {
         if (this.timerEvent) this.timerEvent.destroy();
         if (this.difficultyEvent) this.difficultyEvent.destroy();
 
-        // Update local highscore
+        // Update highscore in memory
         if (this.score > this.highscore) {
             this.highscore = this.score;
-            localStorage.setItem('flyttsmart_hs_v2', this.highscore);
         }
 
         // Play roadkill sound if died from sheep
