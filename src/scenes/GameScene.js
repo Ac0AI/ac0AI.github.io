@@ -434,6 +434,16 @@ export class GameScene extends Phaser.Scene {
 
             this.sheepGroup.add(sheep);
             this.physics.add.existing(sheep);
+
+            // Cute wobble animation
+            this.tweens.add({
+                targets: sheep,
+                angle: { from: -8, to: 8 },
+                duration: 300 + Phaser.Math.Between(0, 200),
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
         }
 
         // Boss sheep on level 5
@@ -454,6 +464,18 @@ export class GameScene extends Phaser.Scene {
             boss.vy = 0;
             this.sheepGroup.add(boss);
             this.physics.add.existing(boss);
+
+            // Boss wobble - slower, bigger
+            this.tweens.add({
+                targets: boss,
+                angle: { from: -5, to: 5 },
+                scaleX: { from: 1.2, to: 1.3 },
+                scaleY: { from: 1.2, to: 1.1 },
+                duration: 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
         }
     }
 
@@ -866,6 +888,19 @@ export class GameScene extends Phaser.Scene {
             if (dx < 0) this.player.setFlipX(true);
             else if (dx > 0) this.player.setFlipX(false);
 
+            // Bouncy walk animation
+            if (!this.walkTween || !this.walkTween.isPlaying()) {
+                this.walkTween = this.tweens.add({
+                    targets: this.player,
+                    scaleY: { from: 0.8, to: 0.72 },
+                    scaleX: { from: 0.8, to: 0.86 },
+                    duration: 120,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+
             if (this.carriedItem) {
                 this.carriedItem.x = this.player.x;
                 this.carriedItem.y = this.player.y - 60;
@@ -876,6 +911,12 @@ export class GameScene extends Phaser.Scene {
             if (this.shieldGlow) {
                 this.shieldGlow.x = this.player.x;
                 this.shieldGlow.y = this.player.y;
+            }
+        } else {
+            // Stop walk animation when idle
+            if (this.walkTween && this.walkTween.isPlaying()) {
+                this.walkTween.stop();
+                this.player.setScale(0.8);
             }
         }
     }
