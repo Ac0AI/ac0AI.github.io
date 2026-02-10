@@ -6,7 +6,7 @@ export class GameScene extends Phaser.Scene {
     init() {
         // Reset all state on scene start/restart
         this.score = 0;
-        this.timeLeft = 45;
+        this.timeLeft = 60;
         this.isGameOver = false;
         this.isGameStarted = false;
         this.hasGracePeriod = false;
