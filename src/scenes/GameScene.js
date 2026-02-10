@@ -89,9 +89,12 @@ export class GameScene extends Phaser.Scene {
         // Prepare UI
         this.createUI();
 
+        // Clear previous sounds to prevent duplicates on restart
+        this.sound.removeAll();
 
-        // Background music (plays always)
-        this.bgMusic = this.sound.add('bgmusic', { loop: true, volume: 0.4 });
+        // Background music - use saved volume or default
+        this.musicVolume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.4;
+        this.bgMusic = this.sound.add('bgmusic', { loop: true, volume: this.musicVolume });
 
         // Level complete jingles (one-shot sounds)
         this.levelJingles = [
