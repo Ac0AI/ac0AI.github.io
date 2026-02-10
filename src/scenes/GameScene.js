@@ -78,6 +78,19 @@ export class GameScene extends Phaser.Scene {
             loop: true
         });
 
+        // Dog spawn (rare - every 15s, 20% chance)
+        this.time.addEvent({
+            delay: 15000,
+            callback: () => {
+                if (!this.isGameStarted || this.isGameOver) return;
+                if (Phaser.Math.Between(1, 5) === 1) {
+                    this.spawnDog();
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
+
         // Prepare UI
         this.createUI();
 
@@ -735,6 +748,78 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    // === DOG ===
+    spawnDog() {
+        const cx = this.cameras.main.width / 2;
+
+        // Announce
+        const announce = this.add.text(cx, 80, '🐕 VALLHUND!', {
+            fontSize: '36px', fill: '#e67e22', fontFamily: 'Fredoka One',
+            stroke: '#000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(3000);
+        this.tweens.add({
+            targets: announce, y: 50, alpha: 0,
+            duration: 2000, onComplete: () => announce.destroy()
+        });
+
+        // Spawn dog from random edge
+        const edge = Phaser.Math.Between(0, 3);
+        let dx, dy;
+        switch (edge) {
+            case 0: dx = Phaser.Math.Between(-3, 12); dy = -5; break;
+            case 1: dx = Phaser.Math.Between(-3, 12); dy = 15; break;
+            case 2: dx = -5; dy = Phaser.Math.Between(-3, 12); break;
+            case 3: dx = 15; dy = Phaser.Math.Between(-3, 12); break;
+        }
+
+        const pos = this.isoToScreen(dx, dy);
+        const dog = this.add.sprite(pos.x, pos.y, 'dog');
+        dog.isoX = dx;
+        dog.isoY = dy;
+        dog.setDepth(pos.y);
+
+        // Dog chases each sheep and removes it
+        const chaseSheep = () => {
+            const sheepList = this.sheepGroup.children.getArray().filter(s => s && s.active);
+            if (sheepList.length === 0) {
+                // All sheep gone, dog runs off screen
+                this.tweens.add({
+                    targets: dog, alpha: 0, duration: 800,
+                    onComplete: () => dog.destroy()
+                });
+                return;
+            }
+
+            // Find nearest sheep
+            let nearest = sheepList[0];
+            let minDist = Infinity;
+            sheepList.forEach(s => {
+                const d = Phaser.Math.Distance.Between(dog.isoX, dog.isoY, s.isoX, s.isoY);
+                if (d < minDist) { minDist = d; nearest = s; }
+            });
+
+            // Tween dog to sheep position
+            const targetPos = this.isoToScreen(nearest.isoX, nearest.isoY);
+            this.tweens.add({
+                targets: dog,
+                x: targetPos.x, y: targetPos.y,
+                duration: 400,
+                onUpdate: () => { dog.setDepth(dog.y); },
+                onComplete: () => {
+                    // Remove the sheep
+                    if (nearest && nearest.active) {
+                        nearest.destroy();
+                    }
+                    // Chase next sheep after short delay
+                    this.time.delayedCall(200, chaseSheep);
+                }
+            });
+        };
+
+        // Start chasing after brief pause
+        this.time.delayedCall(300, chaseSheep);
+    }
+
     handleMovement() {
         const speed = 0.10 * this.speedMultiplier;
         let dx = 0;
@@ -938,15 +1023,22 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateTimer() {
+        // Level 5 is endless - no timer, just increasing difficulty
+        if (this.currentLevel >= this.maxLevel) {
+            if (!this.endlessElapsed) this.endlessElapsed = 0;
+            this.endlessElapsed++;
+            this.timerText.setText('∞ ENDLESS');
+            // More sheep over time: 1 -> 2 -> 3 -> 4 -> 5
+            this.sheepSpawnCount = Math.min(5, 1 + Math.floor(this.endlessElapsed / 15));
+            return;
+        }
+
         this.timeLeft--;
         this.timerText.setText('Tid: ' + this.timeLeft);
         if (this.timeLeft <= 0) {
             this.isGameOver = true;
 
-            // Always Game Over when timer ends (even on final level)
-            const message = this.currentLevel >= this.maxLevel ?
-                'TIDEN TOG SLUT!\nFinal Poäng: ' + this.score :
-                'GAME OVER';
+            const message = 'TIDEN TOG SLUT!';
 
             this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2, message, {
                 fontSize: '56px',

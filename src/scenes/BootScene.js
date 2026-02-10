@@ -96,6 +96,7 @@ export class BootScene extends Phaser.Scene {
         makeEmoji('powerup_coffee', '☕', 40);
         makeEmoji('powerup_clock', '⏰', 40);
         makeEmoji('powerup_shield', '🛡️', 40);
+        makeEmoji('dog', '🐕', 60);
 
 
         // Environment
