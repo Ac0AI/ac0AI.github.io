@@ -70,7 +70,7 @@ export class GameScene extends Phaser.Scene {
         // Sheep Group
         this.sheepGroup = this.add.group();
         this.time.addEvent({
-            delay: 2000,
+            delay: 3000,
             callback: this.spawnSheep,
             callbackScope: this,
             loop: true
@@ -120,6 +120,9 @@ export class GameScene extends Phaser.Scene {
             this.sound.add('level5', { volume: 0.8 })
         ];
         this.roadkillSound = this.sound.add('roadkill', { volume: 0.7 });
+        this.sheepSound = this.sound.add('sfx_sheep', { volume: 0.5 });
+        this.dogSound = this.sound.add('sfx_dog', { volume: 0.5 });
+        this.catSound = this.sound.add('sfx_cat', { volume: 0.5 });
 
         // Show Start Screen
         this.createStartScreen();
@@ -575,6 +578,7 @@ export class GameScene extends Phaser.Scene {
                     sheep.x, sheep.y
                 );
                 if (dist < 40) {
+                    if (this.sheepSound) this.sheepSound.play();
                     this.gameOver("KROCKAD AV FÅR!");
                 }
             }
@@ -862,6 +866,7 @@ export class GameScene extends Phaser.Scene {
         const h = this.cameras.main.height;
 
         // Announce
+        if (this.dogSound) this.dogSound.play();
         const announce = this.add.text(cx, 80, '🐕 VALLHUND!', {
             fontSize: '36px', fill: '#e67e22', fontFamily: 'Fredoka One',
             stroke: '#000', strokeThickness: 4
@@ -923,7 +928,7 @@ export class GameScene extends Phaser.Scene {
 
     handleMovement(delta) {
         // Delta-time movement: same speed regardless of framerate, smoother steps
-        const pixelsPerSecond = 480 * this.speedMultiplier;
+        const pixelsPerSecond = 560 * this.speedMultiplier;
         const speed = pixelsPerSecond * (delta / 1000);
         let dx = 0;
         let dy = 0;
@@ -1490,6 +1495,18 @@ export class GameScene extends Phaser.Scene {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
             osc.start(now);
             osc.stop(now + 0.5);
+        } else if (type === 'baa') {
+            // Sheep bleat - wobbly vibrato
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.setValueAtTime(450, now + 0.05);
+            osc.frequency.setValueAtTime(350, now + 0.15);
+            osc.frequency.setValueAtTime(500, now + 0.2);
+            osc.frequency.setValueAtTime(280, now + 0.35);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
         }
     }
 

@@ -24,6 +24,9 @@ export class BootScene extends Phaser.Scene {
 
         // Sound effects
         this.load.audio('roadkill', 'assets/Roadkill.mp3');
+        this.load.audio('sfx_sheep', 'assets/sheep.wav');
+        this.load.audio('sfx_dog', 'assets/dog.wav');
+        this.load.audio('sfx_cat', 'assets/cat.wav');
     }
 
     create() {
