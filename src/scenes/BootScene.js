@@ -6,6 +6,10 @@ export class BootScene extends Phaser.Scene {
     preload() {
         this.load.image('sprites', 'assets/sprites.png');
         this.load.image('ground_bg', 'assets/ground_bg.png');
+        this.load.image('ground_bg_autumn', 'assets/ground_bg_autumn.png');
+        this.load.image('ground_bg_winter', 'assets/ground_bg_winter.png');
+        this.load.image('ground_bg_night', 'assets/ground_bg_night.png');
+        this.load.image('ground_bg_volcano', 'assets/ground_bg_volcano.png');
 
         // Background music
         this.load.audio('bgmusic', 'assets/fs.mp3');

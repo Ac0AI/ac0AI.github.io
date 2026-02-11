@@ -28,6 +28,18 @@ export class GameScene extends Phaser.Scene {
         this.hasShield = false;
         this.speedMultiplier = 1;
 
+        // Combo system
+        this.comboCount = 0;
+        this.comboTimer = 0;
+        this.comboMaxTime = 4000; // 4 seconds to keep combo alive
+        this.comboMultiplier = 1;
+
+        // Random events
+        this.eventTimer = 0;
+        this.eventInterval = 25000; // every 25s
+        this.activeEvent = null;
+        this.eventMultiplier = 1;
+
         // Points per furniture type
         this.pointValues = {
             box: 1, cd: 1, plant: 2,
@@ -88,6 +100,9 @@ export class GameScene extends Phaser.Scene {
 
         // Prepare UI
         this.createUI();
+
+        // Create synth sound effects (Web Audio API)
+        this.createSynthSounds();
 
         // Clear previous sounds to prevent duplicates on restart
         this.sound.removeAll();
@@ -341,14 +356,54 @@ export class GameScene extends Phaser.Scene {
     createGround() {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
-        const bg = this.add.image(w / 2, h / 2, 'ground_bg');
-        bg.setOrigin(0.5, 0.5);
-        bg.setDepth(-1000);
+
+        // Level-to-background mapping
+        this.levelBackgrounds = {
+            1: 'ground_bg',
+            2: 'ground_bg_autumn',
+            3: 'ground_bg_winter',
+            4: 'ground_bg_night',
+            5: 'ground_bg_volcano'
+        };
+
+        const bgKey = this.levelBackgrounds[this.currentLevel] || 'ground_bg';
+        this.bgImage = this.add.image(w / 2, h / 2, bgKey);
+        this.bgImage.setOrigin(0.5, 0.5);
+        this.bgImage.setDepth(-1000);
 
         // Scale to cover full viewport
-        const scaleX = w / bg.width;
-        const scaleY = h / bg.height;
-        bg.setScale(Math.max(scaleX, scaleY) * 1.1);
+        const scaleX = w / this.bgImage.width;
+        const scaleY = h / this.bgImage.height;
+        this.bgImage.setScale(Math.max(scaleX, scaleY) * 1.1);
+    }
+
+    switchBackground(level) {
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        const bgKey = this.levelBackgrounds[level] || 'ground_bg';
+
+        // Create new background on top
+        const newBg = this.add.image(w / 2, h / 2, bgKey);
+        newBg.setOrigin(0.5, 0.5);
+        newBg.setDepth(-1000);
+        const scaleX = w / newBg.width;
+        const scaleY = h / newBg.height;
+        newBg.setScale(Math.max(scaleX, scaleY) * 1.1);
+        newBg.setAlpha(0);
+
+        // Crossfade
+        const oldBg = this.bgImage;
+        this.bgImage = newBg;
+
+        this.tweens.add({
+            targets: newBg, alpha: 1,
+            duration: 800, ease: 'Power2'
+        });
+        this.tweens.add({
+            targets: oldBg, alpha: 0,
+            duration: 800, ease: 'Power2',
+            onComplete: () => oldBg.destroy()
+        });
     }
 
     createZones() {
@@ -539,6 +594,8 @@ export class GameScene extends Phaser.Scene {
         // Play roadkill sound if died from sheep
         if (reason.includes('FÅR')) {
             this.roadkillSound.play();
+            // Screen shake!
+            this.cameras.main.shake(300, 0.015);
         }
 
         // Stop background music
@@ -700,10 +757,13 @@ export class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.isGameStarted || this.isGameOver) return;
 
-        this.handleMovement();
+        this.handleMovement(delta);
         this.updateSheep(delta);
         this.updatePowerUps();
         this.updateDepthSorting();
+        this.updateCombo(delta);
+        this.updateEventTimer(delta);
+        this.updateTimerUrgency();
     }
 
     // === POWER-UPS ===
@@ -861,8 +921,10 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(300, chaseSheep);
     }
 
-    handleMovement() {
-        const speed = 8.0 * this.speedMultiplier;
+    handleMovement(delta) {
+        // Delta-time movement: same speed regardless of framerate, smoother steps
+        const pixelsPerSecond = 480 * this.speedMultiplier;
+        const speed = pixelsPerSecond * (delta / 1000);
         let dx = 0;
         let dy = 0;
 
@@ -929,19 +991,45 @@ export class GameScene extends Phaser.Scene {
         if (this.carriedItem) {
             const distToHouse = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.houseZone.x, this.houseZone.y);
             if (distToHouse < this.houseZone.radius) {
-                const points = this.pointValues[this.carriedItem.itemType] || 1;
-                this.score += points;
+                let basePoints = this.pointValues[this.carriedItem.itemType] || 1;
+
+                // Gold item bonus
+                if (this.carriedItem.isGold) basePoints *= 10;
+
+                // Apply combo multiplier
+                const comboMult = this.comboMultiplier;
+                // Apply event multiplier
+                const eventMult = this.eventMultiplier;
+                const totalPoints = basePoints * comboMult * eventMult;
+
+                this.score += totalPoints;
                 this.itemsDelivered++;
+
+                // Combo system
+                this.comboCount++;
+                this.comboTimer = this.comboMaxTime;
+                this.updateComboMultiplier();
+
                 this.updateUI();
 
-                // Show points earned
-                const ptText = this.add.text(this.player.x, this.player.y - 80, `+${points}`, {
-                    fontSize: '28px', fill: '#2ecc71', fontFamily: 'Fredoka One',
-                    stroke: '#000', strokeThickness: 2
+                // Play deliver sound
+                this.playSynth('deliver');
+
+                // Show points earned with combo info
+                let pointLabel = `+${totalPoints}`;
+                if (comboMult > 1) pointLabel += ` 🔥x${comboMult}`;
+                if (this.carriedItem.isGold) pointLabel += ' ⭐';
+                if (eventMult > 1) pointLabel += ' 💫';
+
+                const ptColor = comboMult >= 4 ? '#ff4444' : comboMult >= 3 ? '#ff8800' : comboMult >= 2 ? '#f1c40f' : '#2ecc71';
+                const ptSize = Math.min(28 + comboMult * 4, 48);
+                const ptText = this.add.text(this.player.x, this.player.y - 80, pointLabel, {
+                    fontSize: `${ptSize}px`, fill: ptColor, fontFamily: 'Fredoka One',
+                    stroke: '#000', strokeThickness: 3
                 }).setOrigin(0.5).setDepth(3000);
                 this.tweens.add({
-                    targets: ptText, y: ptText.y - 40, alpha: 0,
-                    duration: 800, onComplete: () => ptText.destroy()
+                    targets: ptText, y: ptText.y - 50, alpha: 0,
+                    duration: 1000, ease: 'Power2', onComplete: () => ptText.destroy()
                 });
 
                 this.carriedItem.destroy();
@@ -954,6 +1042,7 @@ export class GameScene extends Phaser.Scene {
                 }
             } else {
                 // Drop on ground
+                this.playSynth('drop');
                 this.carriedItem.y = this.player.y;
                 this.carriedItem = null;
             }
@@ -971,6 +1060,7 @@ export class GameScene extends Phaser.Scene {
 
             if (closest) {
                 this.carriedItem = closest;
+                this.playSynth('pickup');
             }
         }
     }
@@ -986,6 +1076,43 @@ export class GameScene extends Phaser.Scene {
         item.setOrigin(0.5, 0.75);
         item.itemType = type;
         item.setDepth(ry);
+        item.isGold = false;
+
+        // 10% chance of gold variant
+        if (Phaser.Math.Between(1, 10) === 1) {
+            item.isGold = true;
+            item.setTint(0xFFD700);
+            // Sparkle animation
+            this.tweens.add({
+                targets: item,
+                scaleX: { from: 1, to: 1.2 },
+                scaleY: { from: 1, to: 1.2 },
+                alpha: { from: 1, to: 0.7 },
+                yoyo: true, repeat: -1,
+                duration: 400, ease: 'Sine.easeInOut'
+            });
+            // Gold items disappear after 8s
+            this.time.delayedCall(6000, () => {
+                if (item && item.active && item !== this.carriedItem) {
+                    this.tweens.add({
+                        targets: item, alpha: 0, duration: 2000,
+                        onComplete: () => {
+                            if (item !== this.carriedItem) item.destroy();
+                        }
+                    });
+                }
+            });
+            // Announce gold item
+            const announce = this.add.text(this.cameras.main.width / 2, 120, '⭐ GULDMÖBEL! ⭐', {
+                fontSize: '30px', fill: '#FFD700', fontFamily: 'Fredoka One',
+                stroke: '#000', strokeThickness: 4
+            }).setOrigin(0.5).setDepth(3000);
+            this.tweens.add({
+                targets: announce, y: 90, alpha: 0,
+                duration: 2000, onComplete: () => announce.destroy()
+            });
+        }
+
         this.furnitureGroup.add(item);
     }
 
@@ -1056,6 +1183,12 @@ export class GameScene extends Phaser.Scene {
             }
             localStorage.setItem('flyttsmart_volume', String(this.musicVolume));
         });
+
+        // Combo UI text
+        this.comboText = this.add.text(16, 118, '', {
+            fontSize: '28px', fill: '#f1c40f', fontFamily: 'Fredoka One',
+            stroke: '#000', strokeThickness: 3
+        }).setDepth(3000).setVisible(false);
     }
 
     updateTimer() {
@@ -1121,10 +1254,14 @@ export class GameScene extends Phaser.Scene {
 
         if (this.currentLevel >= this.maxLevel) {
             // Victory!
+            this.spawnConfetti();
             this.victory();
         } else {
             // Play level complete jingle
             this.playLevelJingle(this.currentLevel);
+
+            // Confetti!
+            this.spawnConfetti();
 
             // Next level
             this.pauseGame();
@@ -1193,6 +1330,9 @@ export class GameScene extends Phaser.Scene {
 
         // Reset difficulty for new level
         this.sheepSpawnCount = 1;
+
+        // Switch background
+        this.switchBackground(this.currentLevel);
 
         // Clear sheep
         this.sheepGroup.clear(true, true);
@@ -1265,6 +1405,247 @@ export class GameScene extends Phaser.Scene {
             this.levelText.setText(`Bana ${this.currentLevel} - FINAL!`);
         } else {
             this.levelText.setText(`Bana ${this.currentLevel} (${this.itemsDelivered}/${this.levelGoal})`);
+        }
+        // Update combo UI
+        if (this.comboText) {
+            if (this.comboCount >= 2) {
+                const color = this.comboMultiplier >= 4 ? '#ff4444' : this.comboMultiplier >= 3 ? '#ff8800' : '#f1c40f';
+                this.comboText.setText(`🔥 x${this.comboMultiplier} COMBO!`);
+                this.comboText.setColor(color);
+                this.comboText.setVisible(true);
+            } else {
+                this.comboText.setVisible(false);
+            }
+        }
+    }
+
+    // === SYNTH SOUND EFFECTS (Web Audio API) ===
+    createSynthSounds() {
+        try {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            this.audioCtx = null;
+        }
+    }
+
+    playSynth(type) {
+        if (!this.audioCtx) return;
+        const ctx = this.audioCtx;
+        const now = ctx.currentTime;
+
+        // Resume context if suspended (browser autoplay policy)
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'pickup') {
+            // Short rising chirp
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'deliver') {
+            // Happy two-tone chime
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523, now); // C5
+            osc.frequency.setValueAtTime(659, now + 0.1); // E5
+            osc.frequency.setValueAtTime(784, now + 0.2); // G5
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+        } else if (type === 'drop') {
+            // Low thud
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        } else if (type === 'combo') {
+            // Ascending chime scaled by combo
+            const baseFreq = 400 + (this.comboCount * 50);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(baseFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.15);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'event') {
+            // Dramatic fanfare
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(554, now + 0.1);
+            osc.frequency.setValueAtTime(659, now + 0.2);
+            osc.frequency.setValueAtTime(880, now + 0.3);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+    }
+
+    // === COMBO SYSTEM ===
+    updateComboMultiplier() {
+        if (this.comboCount >= 8) this.comboMultiplier = 4;
+        else if (this.comboCount >= 5) this.comboMultiplier = 3;
+        else if (this.comboCount >= 2) this.comboMultiplier = 2;
+        else this.comboMultiplier = 1;
+
+        // Play combo sound when multiplier changes
+        if (this.comboCount >= 2) {
+            this.playSynth('combo');
+        }
+    }
+
+    updateCombo(delta) {
+        if (this.comboTimer > 0) {
+            this.comboTimer -= delta;
+            if (this.comboTimer <= 0) {
+                this.comboCount = 0;
+                this.comboMultiplier = 1;
+                this.comboTimer = 0;
+                this.updateUI();
+            }
+        }
+    }
+
+    // === RANDOM EVENTS ===
+    updateEventTimer(delta) {
+        this.eventTimer += delta;
+        if (this.eventTimer >= this.eventInterval) {
+            this.eventTimer = 0;
+            // 30% chance of event
+            if (Phaser.Math.Between(1, 100) <= 30) {
+                this.triggerRandomEvent();
+            }
+        }
+    }
+
+    triggerRandomEvent() {
+        const events = ['dubbelpoang', 'farinvasion'];
+        const event = events[Phaser.Math.Between(0, events.length - 1)];
+        this.activeEvent = event;
+
+        this.playSynth('event');
+
+        const cx = this.cameras.main.width / 2;
+
+        if (event === 'dubbelpoang') {
+            this.eventMultiplier = 2;
+
+            // Banner
+            const banner = this.add.text(cx, 50, '💫 DUBBELPOÄNG! 💫', {
+                fontSize: '36px', fill: '#FFD700', fontFamily: 'Fredoka One',
+                stroke: '#000', strokeThickness: 5,
+                backgroundColor: '#2c3e50', padding: { x: 16, y: 8 }
+            }).setOrigin(0.5).setDepth(3000).setAlpha(0);
+
+            this.tweens.add({
+                targets: banner, alpha: 1, y: 60,
+                duration: 400, ease: 'Back.easeOut'
+            });
+
+            // End after 10s
+            this.time.delayedCall(10000, () => {
+                this.eventMultiplier = 1;
+                this.activeEvent = null;
+                this.tweens.add({
+                    targets: banner, alpha: 0, y: 30,
+                    duration: 400, onComplete: () => banner.destroy()
+                });
+            });
+
+        } else if (event === 'farinvasion') {
+            // Banner
+            const banner = this.add.text(cx, 50, '🐑 FÅRINVASION! 🐑', {
+                fontSize: '36px', fill: '#ff4444', fontFamily: 'Fredoka One',
+                stroke: '#000', strokeThickness: 5,
+                backgroundColor: '#2c3e50', padding: { x: 16, y: 8 }
+            }).setOrigin(0.5).setDepth(3000).setAlpha(0);
+
+            this.tweens.add({
+                targets: banner, alpha: 1, y: 60,
+                duration: 400, ease: 'Back.easeOut'
+            });
+
+            // Screen shake for drama
+            this.cameras.main.shake(200, 0.008);
+
+            // Spawn burst of sheep
+            const savedCount = this.sheepSpawnCount;
+            this.sheepSpawnCount = 8;
+            this.spawnSheep();
+            this.sheepSpawnCount = savedCount;
+
+            this.time.delayedCall(3000, () => {
+                this.activeEvent = null;
+                this.tweens.add({
+                    targets: banner, alpha: 0, y: 30,
+                    duration: 400, onComplete: () => banner.destroy()
+                });
+            });
+        }
+    }
+
+    // === TIMER URGENCY ===
+    updateTimerUrgency() {
+        if (this.currentLevel >= this.maxLevel) return; // Endless mode, no urgency
+
+        if (this.timeLeft <= 10 && this.timeLeft > 0) {
+            // Pulse timer text red
+            if (!this.timerUrgencyTween || !this.timerUrgencyTween.isPlaying()) {
+                this.timerText.setColor('#ff0000');
+                this.timerUrgencyTween = this.tweens.add({
+                    targets: this.timerText,
+                    scaleX: { from: 1, to: 1.15 },
+                    scaleY: { from: 1, to: 1.15 },
+                    duration: 300,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        } else {
+            if (this.timerUrgencyTween && this.timerUrgencyTween.isPlaying()) {
+                this.timerUrgencyTween.stop();
+                this.timerText.setScale(1);
+                this.timerText.setColor('#000');
+            }
+        }
+    }
+
+    // === CONFETTI on level clear ===
+    spawnConfetti() {
+        const w = this.cameras.main.width;
+        const colors = [0xff4444, 0xf1c40f, 0x2ecc71, 0x3498db, 0xe67e22, 0x9b59b6];
+
+        for (let i = 0; i < 40; i++) {
+            const color = colors[Phaser.Math.Between(0, colors.length - 1)];
+            const x = Phaser.Math.Between(0, w);
+            const size = Phaser.Math.Between(4, 10);
+            const confetti = this.add.rectangle(x, -10, size, size * 2, color)
+                .setDepth(4000)
+                .setAngle(Phaser.Math.Between(0, 360));
+
+            this.tweens.add({
+                targets: confetti,
+                y: this.cameras.main.height + 20,
+                x: x + Phaser.Math.Between(-80, 80),
+                angle: Phaser.Math.Between(-360, 360),
+                duration: Phaser.Math.Between(1500, 3000),
+                ease: 'Power1',
+                delay: Phaser.Math.Between(0, 500),
+                onComplete: () => confetti.destroy()
+            });
         }
     }
 }
