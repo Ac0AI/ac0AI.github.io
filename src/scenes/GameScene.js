@@ -27,6 +27,7 @@ export class GameScene extends Phaser.Scene {
         // Power-ups
         this.hasShield = false;
         this.speedMultiplier = 1;
+        this.invertedControls = false;
 
         // Combo system
         this.comboCount = 0;
@@ -772,7 +773,7 @@ export class GameScene extends Phaser.Scene {
 
     // === POWER-UPS ===
     spawnPowerUp() {
-        const types = ['powerup_coffee', 'powerup_clock', 'powerup_shield'];
+        const types = ['powerup_coffee', 'powerup_clock', 'powerup_shield', 'powerup_beer'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
         const rx = Phaser.Math.FloatBetween(100, this.cameras.main.width - 100);
         const ry = Phaser.Math.FloatBetween(100, this.cameras.main.height - 100);
@@ -841,6 +842,21 @@ export class GameScene extends Phaser.Scene {
             this.time.delayedCall(5000, () => {
                 this.hasShield = false;
                 if (this.shieldGlow) { this.shieldGlow.destroy(); this.shieldGlow = null; }
+            });
+        } else if (type === 'powerup_beer') {
+            label = '🍺 FULL!';
+            this.invertedControls = true;
+            this.playSynth('drop');
+            // Dizzy effect on player
+            if (this.dizzyTween) this.dizzyTween.stop();
+            this.dizzyTween = this.tweens.add({
+                targets: this.player, angle: { from: -10, to: 10 },
+                yoyo: true, repeat: -1, duration: 200, ease: 'Sine.easeInOut'
+            });
+            this.time.delayedCall(5000, () => {
+                this.invertedControls = false;
+                if (this.dizzyTween) { this.dizzyTween.stop(); this.dizzyTween = null; }
+                this.player.setAngle(0);
             });
         }
 
@@ -930,13 +946,14 @@ export class GameScene extends Phaser.Scene {
         // Delta-time movement: same speed regardless of framerate, smoother steps
         const pixelsPerSecond = 560 * this.speedMultiplier;
         const speed = pixelsPerSecond * (delta / 1000);
+        const direction = this.invertedControls ? -1 : 1;
         let dx = 0;
         let dy = 0;
 
-        if (this.cursors.up.isDown || this.wasd.up.isDown) dy -= speed;
-        if (this.cursors.down.isDown || this.wasd.down.isDown) dy += speed;
-        if (this.cursors.left.isDown || this.wasd.left.isDown) dx -= speed;
-        if (this.cursors.right.isDown || this.wasd.right.isDown) dx += speed;
+        if (this.cursors.left.isDown || this.wasd.left.isDown) dx -= speed * direction;
+        if (this.cursors.right.isDown || this.wasd.right.isDown) dx += speed * direction;
+        if (this.cursors.up.isDown || this.wasd.up.isDown) dy -= speed * direction;
+        if (this.cursors.down.isDown || this.wasd.down.isDown) dy += speed * direction;
 
         if (dx !== 0 || dy !== 0) {
             // Normalize diagonal movement
@@ -1548,7 +1565,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     triggerRandomEvent() {
-        const events = ['dubbelpoang', 'farinvasion'];
+        const events = ['dubbelpoang'];
+        if (this.currentLevel >= 2) events.push('farinvasion');
         const event = events[Phaser.Math.Between(0, events.length - 1)];
         this.activeEvent = event;
 
@@ -1596,6 +1614,9 @@ export class GameScene extends Phaser.Scene {
 
             // Screen shake for drama
             this.cameras.main.shake(200, 0.008);
+
+            // Play sheep sound
+            if (this.sheepSound) this.sheepSound.play();
 
             // Spawn burst of sheep
             const savedCount = this.sheepSpawnCount;
