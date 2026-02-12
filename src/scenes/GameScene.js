@@ -51,6 +51,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // Screen-size scale factor: ensures consistent gameplay across all resolutions
+        // Reference width is 800px (typical small/mobile screen)
+        const refWidth = 800;
+        this.screenScale = this.cameras.main.width / refWidth;
+
         // Create background
         this.createGround();
 
@@ -413,31 +418,34 @@ export class GameScene extends Phaser.Scene {
     createZones() {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
+        const s = this.screenScale || 1;
 
         // Truck bottom-left, closer to road
-        const truckX = 300;
+        const truckX = 300 * s;
         const truckY = h - 180;
         this.truck = this.add.image(truckX, truckY, 'truck');
         this.truck.setOrigin(0.5, 0.85);
         this.truck.setDepth(truckY);
 
         // House mid-right, closer to road
-        const houseX = w - 320;
+        const houseX = w - 320 * s;
         const houseY = h / 2 - 80;
         this.house = this.add.image(houseX, houseY, 'house');
         this.house.setOrigin(0.5, 0.85);
         this.house.setDepth(houseY);
 
-        this.truckZone = { x: truckX, y: truckY, radius: 80 };
-        this.houseZone = { x: houseX, y: houseY, radius: 80 };
+        const zoneRadius = 80 * s;
+        this.truckZone = { x: truckX, y: truckY, radius: zoneRadius };
+        this.houseZone = { x: houseX, y: houseY, radius: zoneRadius };
     }
 
     spawnFurniture() {
         const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         for (let i = 0; i < 3; i++) {
             const type = types[Phaser.Math.Between(0, types.length - 1)];
-            // Spawn near the truck area (truck is at 300, h-180)
-            const rx = Phaser.Math.FloatBetween(230, 380);
+            // Spawn near the truck area, scaled to screen size
+            const s = this.screenScale || 1;
+            const rx = Phaser.Math.FloatBetween(230 * s, 380 * s);
             const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 240, this.cameras.main.height - 140);
 
             const item = this.add.sprite(rx, ry, type);
@@ -944,7 +952,7 @@ export class GameScene extends Phaser.Scene {
 
     handleMovement(delta) {
         // Delta-time movement: same speed regardless of framerate, smoother steps
-        const pixelsPerSecond = 560 * this.speedMultiplier;
+        const pixelsPerSecond = 560 * (this.screenScale || 1) * this.speedMultiplier;
         const speed = pixelsPerSecond * (delta / 1000);
         const direction = this.invertedControls ? -1 : 1;
         let dx = 0;
@@ -1070,7 +1078,7 @@ export class GameScene extends Phaser.Scene {
             }
         } else {
             let closest = null;
-            let minC = 80; // pixel pickup range
+            let minC = 80 * (this.screenScale || 1); // pixel pickup range, scaled
 
             this.furnitureGroup.children.iterate(item => {
                 const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y);
@@ -1090,8 +1098,9 @@ export class GameScene extends Phaser.Scene {
     spawnOneFurniture() {
         const types = ['sofa', 'box', 'box', 'box', 'box', 'box', 'tv', 'lamp', 'plant', 'bookshelf', 'chair', 'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer'];
         const type = types[Phaser.Math.Between(0, types.length - 1)];
-        // Spawn near the truck area (truck is at 300, h-180)
-        const rx = Phaser.Math.FloatBetween(230, 380);
+        // Spawn near the truck area, scaled to screen size
+        const s = this.screenScale || 1;
+        const rx = Phaser.Math.FloatBetween(230 * s, 380 * s);
         const ry = Phaser.Math.FloatBetween(this.cameras.main.height - 240, this.cameras.main.height - 140);
 
         const item = this.add.sprite(rx, ry, type);
