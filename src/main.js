@@ -9,14 +9,24 @@ import { Game } from './game.js';
 const scene = new THREE.Scene();
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.2;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('game-container').appendChild(renderer.domElement);
+
+// Vignette overlay for depth
+const vignette = document.createElement('div');
+vignette.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+`;
+document.getElementById('game-container').appendChild(vignette);
 
 // Camera — Orthographic isometric
 const frustumSize = 28;

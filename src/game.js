@@ -303,6 +303,9 @@ export class Game {
         this.effects.update(dt);
         this.effects.applyWalkBob(this.playerModel, this.input.isMoving);
 
+        // ---- Ambient particles ----
+        this.world.updateParticles(dt);
+
         // ---- Gold item shimmer ----
         const time = Date.now() * 0.001;
         this.furnitureItems.forEach(f => {

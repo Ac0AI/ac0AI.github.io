@@ -65,6 +65,8 @@ export class World {
         this.dirLight = null;
         this.decorations = [];
         this.obstacles = [];  // { x, z, radius } for collision
+        this.particles = null;
+        this.skyDome = null;
 
         // World positions (play area ~40x40, centered at origin)
         this.truckPos = new THREE.Vector3(-10, 0, 10);
@@ -79,9 +81,22 @@ export class World {
     create(level = 1) {
         const theme = LEVEL_THEMES[level - 1] || LEVEL_THEMES[0];
 
-        // Ground — large enough to fill the entire view
-        const groundGeo = new THREE.PlaneGeometry(200, 200, 1, 1);
-        const groundMat = new THREE.MeshLambertMaterial({ color: theme.ground });
+        // Ground — vertex-colored for natural variation
+        const groundGeo = new THREE.PlaneGeometry(200, 200, 40, 40);
+        const colors = [];
+        const baseColor = new THREE.Color(theme.ground);
+        const posAttr = groundGeo.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const c = baseColor.clone();
+            c.offsetHSL(
+                (Math.random() - 0.5) * 0.04,
+                (Math.random() - 0.5) * 0.08,
+                (Math.random() - 0.5) * 0.06
+            );
+            colors.push(c.r, c.g, c.b);
+        }
+        groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
         this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.groundMesh.receiveShadow = true;
@@ -93,30 +108,40 @@ export class World {
         // Path from truck to house (subtle)
         this._createPath();
 
+        // Sky dome — gradient from horizon to zenith
+        this._createSkyDome(theme);
+
         // Lighting
         this.ambientLight = new THREE.AmbientLight(theme.ambient, theme.ambientIntensity);
         this.scene.add(this.ambientLight);
 
         this.dirLight = new THREE.DirectionalLight(theme.dirLight, theme.dirIntensity);
-        this.dirLight.position.set(15, 20, 10);
+        this.dirLight.position.set(15, 25, 10);
         this.dirLight.castShadow = true;
-        this.dirLight.shadow.mapSize.set(1024, 1024);
-        this.dirLight.shadow.camera.left = -25;
-        this.dirLight.shadow.camera.right = 25;
-        this.dirLight.shadow.camera.top = 25;
-        this.dirLight.shadow.camera.bottom = -25;
+        this.dirLight.shadow.mapSize.set(2048, 2048);
+        this.dirLight.shadow.camera.left = -30;
+        this.dirLight.shadow.camera.right = 30;
+        this.dirLight.shadow.camera.top = 30;
+        this.dirLight.shadow.camera.bottom = -30;
         this.dirLight.shadow.camera.near = 1;
-        this.dirLight.shadow.camera.far = 60;
+        this.dirLight.shadow.camera.far = 80;
+        this.dirLight.shadow.bias = -0.001;
+        this.dirLight.shadow.normalBias = 0.02;
         this.scene.add(this.dirLight);
 
+        // Secondary fill light for softer shadows
+        const fillLight = new THREE.DirectionalLight(theme.dirLight, theme.dirIntensity * 0.25);
+        fillLight.position.set(-10, 15, -8);
+        this.scene.add(fillLight);
+        this.fillLight = fillLight;
+
         // Hemisphere light for softer fill
-        const hemiLight = new THREE.HemisphereLight(theme.sky, theme.ground, 0.3);
+        const hemiLight = new THREE.HemisphereLight(theme.sky, theme.ground, 0.4);
         this.scene.add(hemiLight);
         this.hemiLight = hemiLight;
 
         // Fog
         this.scene.fog = new THREE.FogExp2(theme.fog, theme.fogDensity);
-        this.scene.background = new THREE.Color(theme.sky);
 
         // Truck
         this.truckModel = createTruck();
@@ -136,6 +161,9 @@ export class World {
 
         // Decorations (trees, rocks etc.)
         this._addDecorations(level);
+
+        // Ambient particles
+        this._createParticles(theme);
     }
 
     _addGrassDetails(theme) {
@@ -144,21 +172,21 @@ export class World {
         this.grassDetails = [];
 
         // Darker / lighter grass patches (large subtle circles on ground)
-        for (let i = 0; i < 20; i++) {
-            const r = 2 + Math.random() * 5;
+        for (let i = 0; i < 40; i++) {
+            const r = 2 + Math.random() * 6;
             const patchGeo = new THREE.CircleGeometry(r, 8);
-            // Slightly vary the ground color
             const baseColor = new THREE.Color(theme.ground);
-            const variation = (Math.random() - 0.5) * 0.08;
+            const variation = (Math.random() - 0.5) * 0.12;
             baseColor.r = Math.max(0, Math.min(1, baseColor.r + variation));
-            baseColor.g = Math.max(0, Math.min(1, baseColor.g + variation));
+            baseColor.g = Math.max(0, Math.min(1, baseColor.g + variation * 0.8));
+            baseColor.b = Math.max(0, Math.min(1, baseColor.b + variation * 0.3));
             const patchMat = new THREE.MeshLambertMaterial({ color: baseColor });
             const patch = new THREE.Mesh(patchGeo, patchMat);
             patch.rotation.x = -Math.PI / 2;
             patch.position.set(
-                (Math.random() - 0.5) * 60,
+                (Math.random() - 0.5) * 70,
                 0.015,
-                (Math.random() - 0.5) * 60
+                (Math.random() - 0.5) * 70
             );
             patch.receiveShadow = true;
             this.scene.add(patch);
@@ -166,18 +194,18 @@ export class World {
         }
 
         // Small grass tufts (tiny cones)
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 80; i++) {
             const tuft = new THREE.Group();
-            const bladeCount = 3 + Math.floor(Math.random() * 3);
+            const bladeCount = 3 + Math.floor(Math.random() * 4);
             for (let b = 0; b < bladeCount; b++) {
-                const h = 0.15 + Math.random() * 0.2;
+                const h = 0.15 + Math.random() * 0.25;
                 const blade = new THREE.Mesh(
                     new THREE.ConeGeometry(0.04, h, 4),
                     new THREE.MeshLambertMaterial({
                         color: new THREE.Color(theme.ground).offsetHSL(
-                            (Math.random() - 0.5) * 0.05,
-                            (Math.random() - 0.5) * 0.1,
-                            (Math.random() - 0.5) * 0.15
+                            (Math.random() - 0.5) * 0.06,
+                            (Math.random() - 0.5) * 0.15,
+                            (Math.random() - 0.5) * 0.2
                         )
                     })
                 );
@@ -186,34 +214,56 @@ export class World {
                     h / 2,
                     (Math.random() - 0.5) * 0.3
                 );
-                blade.rotation.z = (Math.random() - 0.5) * 0.4;
+                blade.rotation.z = (Math.random() - 0.5) * 0.5;
+                blade.castShadow = true;
                 tuft.add(blade);
             }
             tuft.position.set(
-                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 55,
                 0,
-                (Math.random() - 0.5) * 50
+                (Math.random() - 0.5) * 55
             );
             this.scene.add(tuft);
             this.grassDetails.push(tuft);
         }
 
-        // Tiny flower clusters (colored spheres on ground)
-        const flowerColors = [0xff6b9d, 0xf1c40f, 0xe74c3c, 0x9b59b6, 0xffffff];
-        for (let i = 0; i < 15; i++) {
-            const flower = new THREE.Mesh(
-                new THREE.SphereGeometry(0.06, 6, 4),
-                new THREE.MeshLambertMaterial({
-                    color: flowerColors[Math.floor(Math.random() * flowerColors.length)]
-                })
+        // Tiny flower clusters
+        const flowerColors = [0xff6b9d, 0xf1c40f, 0xe74c3c, 0x9b59b6, 0xffffff, 0xff9ff3, 0x55efc4];
+        for (let i = 0; i < 30; i++) {
+            const flowerGroup = new THREE.Group();
+            const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+            // Petals
+            for (let p = 0; p < 4; p++) {
+                const petal = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05, 6, 4),
+                    new THREE.MeshLambertMaterial({ color: fc })
+                );
+                const angle = (p / 4) * Math.PI * 2;
+                petal.position.set(Math.cos(angle) * 0.04, 0.08, Math.sin(angle) * 0.04);
+                flowerGroup.add(petal);
+            }
+            // Center
+            const center = new THREE.Mesh(
+                new THREE.SphereGeometry(0.03, 6, 4),
+                new THREE.MeshLambertMaterial({ color: 0xf1c40f })
             );
-            flower.position.set(
-                (Math.random() - 0.5) * 45,
-                0.06,
-                (Math.random() - 0.5) * 45
+            center.position.y = 0.08;
+            flowerGroup.add(center);
+            // Stem
+            const stem = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.008, 0.008, 0.08, 4),
+                new THREE.MeshLambertMaterial({ color: 0x27ae60 })
             );
-            this.scene.add(flower);
-            this.grassDetails.push(flower);
+            stem.position.y = 0.04;
+            flowerGroup.add(stem);
+
+            flowerGroup.position.set(
+                (Math.random() - 0.5) * 50,
+                0,
+                (Math.random() - 0.5) * 50
+            );
+            this.scene.add(flowerGroup);
+            this.grassDetails.push(flowerGroup);
         }
     }
 
@@ -310,27 +360,30 @@ export class World {
         const foliageColors = [0x228B22, 0xd4a056, 0xe8e8f0, 0x1a5a1a, 0x5a2a0a];
         const foliageColor = foliageColors[level - 1] || 0x228B22;
 
-        // Trunk
+        // Trunk with bark texture variation
         const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.2, 1.5, 6),
-            new THREE.MeshLambertMaterial({ color: trunkColor })
+            new THREE.CylinderGeometry(0.15, 0.25, 1.5, 6),
+            new THREE.MeshPhongMaterial({ color: trunkColor, shininess: 5, flatShading: true })
         );
         trunk.position.y = 0.75;
         trunk.castShadow = true;
         group.add(trunk);
 
-        // Foliage (stacked cones = low poly tree)
-        const sizes = [[0.8, 1], [0.6, 0.8], [0.4, 0.6]];
-        let y = 1.3;
-        sizes.forEach(([r, h]) => {
+        // Foliage (stacked cones = low poly tree, with color variation)
+        const sizes = [[0.9, 1.1], [0.7, 0.9], [0.45, 0.7]];
+        let y = 1.2;
+        sizes.forEach(([r, h], i) => {
+            const leafColor = new THREE.Color(foliageColor);
+            leafColor.offsetHSL(0, 0, (i - 1) * 0.06);
             const cone = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 6),
-                new THREE.MeshLambertMaterial({ color: foliageColor })
+                new THREE.ConeGeometry(r, h, 7),
+                new THREE.MeshPhongMaterial({ color: leafColor, shininess: 10, flatShading: true })
             );
             cone.position.y = y;
             cone.castShadow = true;
+            cone.receiveShadow = true;
             group.add(cone);
-            y += h * 0.55;
+            y += h * 0.5;
         });
 
         const s = 0.8 + Math.random() * 0.6;
@@ -340,24 +393,54 @@ export class World {
 
     _createRock() {
         const group = new THREE.Group();
-        const r = 0.3 + Math.random() * 0.4;
+        const r = 0.3 + Math.random() * 0.5;
+        // Use varied greys
+        const grey = 0.35 + Math.random() * 0.3;
+        const rockColor = new THREE.Color(grey, grey, grey * 0.95);
         const rock = new THREE.Mesh(
             new THREE.DodecahedronGeometry(r, 0),
-            new THREE.MeshLambertMaterial({ color: 0x808080 })
+            new THREE.MeshPhongMaterial({ color: rockColor, shininess: 15, flatShading: true })
         );
-        rock.position.y = r * 0.5;
+        rock.position.y = r * 0.45;
         rock.rotation.set(Math.random(), Math.random(), Math.random());
         rock.castShadow = true;
+        rock.receiveShadow = true;
         group.add(rock);
+
+        // Sometimes add a smaller rock beside
+        if (Math.random() > 0.5) {
+            const r2 = r * 0.4;
+            const rock2 = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(r2, 0),
+                new THREE.MeshPhongMaterial({ color: rockColor.clone().offsetHSL(0, 0, 0.05), shininess: 10, flatShading: true })
+            );
+            rock2.position.set(r * 0.7, r2 * 0.4, r * 0.3);
+            rock2.rotation.set(Math.random(), Math.random(), Math.random());
+            rock2.castShadow = true;
+            group.add(rock2);
+        }
+
         return group;
     }
 
     switchLevel(level) {
         const theme = LEVEL_THEMES[level - 1] || LEVEL_THEMES[0];
 
-        // Transition colors smoothly
+        // Update vertex-colored ground
         if (this.groundMesh) {
-            this.groundMesh.material.color.setHex(theme.ground);
+            const posAttr = this.groundMesh.geometry.attributes.position;
+            const colorAttr = this.groundMesh.geometry.attributes.color;
+            const baseColor = new THREE.Color(theme.ground);
+            for (let i = 0; i < posAttr.count; i++) {
+                const c = baseColor.clone();
+                c.offsetHSL(
+                    (Math.random() - 0.5) * 0.04,
+                    (Math.random() - 0.5) * 0.08,
+                    (Math.random() - 0.5) * 0.06
+                );
+                colorAttr.setXYZ(i, c.r, c.g, c.b);
+            }
+            colorAttr.needsUpdate = true;
         }
         if (this.ambientLight) {
             this.ambientLight.color.setHex(theme.ambient);
@@ -367,14 +450,25 @@ export class World {
             this.dirLight.color.setHex(theme.dirLight);
             this.dirLight.intensity = theme.dirIntensity;
         }
+        if (this.fillLight) {
+            this.fillLight.color.setHex(theme.dirLight);
+            this.fillLight.intensity = theme.dirIntensity * 0.25;
+        }
         if (this.hemiLight) {
             this.hemiLight.color.setHex(theme.sky);
             this.hemiLight.groundColor.setHex(theme.ground);
         }
         this.scene.fog = new THREE.FogExp2(theme.fog, theme.fogDensity);
-        this.scene.background = new THREE.Color(theme.sky);
 
+        // Update sky dome
+        this._updateSkyDome(theme);
+
+        // Refresh grass and decorations for new theme
+        this._addGrassDetails(theme);
         this._addDecorations(level);
+
+        // Refresh particles
+        this._createParticles(theme);
     }
 
     isInTruckZone(pos) {
@@ -402,11 +496,111 @@ export class World {
             const dist = Math.sqrt(dx * dx + dz * dz);
             const minDist = obs.radius + entityRadius;
             if (dist < minDist && dist > 0.001) {
-                // Push out along the vector from obstacle center to pos
                 const pushFactor = (minDist - dist) / dist;
                 pos.x += dx * pushFactor;
                 pos.z += dz * pushFactor;
             }
         }
+    }
+
+    // Sky dome with gradient
+    _createSkyDome(theme) {
+        if (this.skyDome) {
+            this.scene.remove(this.skyDome);
+            this.skyDome.geometry.dispose();
+            this.skyDome.material.dispose();
+        }
+        const skyGeo = new THREE.SphereGeometry(90, 32, 16);
+        const skyColors = [];
+        const skyColor = new THREE.Color(theme.sky);
+        const horizonColor = new THREE.Color(theme.fog);
+        const posAttr = skyGeo.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const y = posAttr.getY(i);
+            const t = Math.max(0, y / 90);  // 0 at horizon, 1 at zenith
+            const c = horizonColor.clone().lerp(skyColor, t * t);
+            skyColors.push(c.r, c.g, c.b);
+        }
+        skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColors, 3));
+        const skyMat = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            side: THREE.BackSide,
+            fog: false
+        });
+        this.skyDome = new THREE.Mesh(skyGeo, skyMat);
+        this.scene.add(this.skyDome);
+        this.scene.background = null;  // Use sky dome instead
+    }
+
+    _updateSkyDome(theme) {
+        if (!this.skyDome) return;
+        const skyColor = new THREE.Color(theme.sky);
+        const horizonColor = new THREE.Color(theme.fog);
+        const colorAttr = this.skyDome.geometry.attributes.color;
+        const posAttr = this.skyDome.geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const y = posAttr.getY(i);
+            const t = Math.max(0, y / 90);
+            const c = horizonColor.clone().lerp(skyColor, t * t);
+            colorAttr.setXYZ(i, c.r, c.g, c.b);
+        }
+        colorAttr.needsUpdate = true;
+    }
+
+    // Floating ambient particles (pollen, dust motes)
+    _createParticles(theme) {
+        if (this.particles) {
+            this.scene.remove(this.particles);
+            this.particles.geometry.dispose();
+            this.particles.material.dispose();
+        }
+        const count = 120;
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        const particleColors = [
+            new THREE.Color(0xffffff),
+            new THREE.Color(0xffffcc),
+            new THREE.Color(theme.sky).offsetHSL(0, -0.3, 0.3)
+        ];
+        for (let i = 0; i < count; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 50;
+            positions[i * 3 + 1] = 0.5 + Math.random() * 8;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+            const c = particleColors[Math.floor(Math.random() * particleColors.length)];
+            colors[i * 3] = c.r;
+            colors[i * 3 + 1] = c.g;
+            colors[i * 3 + 2] = c.b;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const mat = new THREE.PointsMaterial({
+            size: 0.12,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.5,
+            sizeAttenuation: true,
+            depthWrite: false
+        });
+        this.particles = new THREE.Points(geo, mat);
+        this.scene.add(this.particles);
+    }
+
+    // Call from game update loop
+    updateParticles(dt) {
+        if (!this.particles) return;
+        const positions = this.particles.geometry.attributes.position.array;
+        const count = positions.length / 3;
+        for (let i = 0; i < count; i++) {
+            // Gentle floating drift
+            positions[i * 3] += Math.sin(Date.now() * 0.0003 + i) * 0.003;
+            positions[i * 3 + 1] += Math.sin(Date.now() * 0.0005 + i * 0.7) * 0.002;
+            positions[i * 3 + 2] += Math.cos(Date.now() * 0.0004 + i * 1.3) * 0.003;
+
+            // Wrap around
+            if (positions[i * 3 + 1] > 10) positions[i * 3 + 1] = 0.5;
+            if (positions[i * 3 + 1] < 0) positions[i * 3 + 1] = 8;
+        }
+        this.particles.geometry.attributes.position.needsUpdate = true;
     }
 }
