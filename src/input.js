@@ -1,113 +1,130 @@
+// Input handler for keyboard + touch (virtual joystick)
+
 export class InputHandler {
     constructor() {
         this.keys = {};
-        this.touchActive = false;
-        this.joystickData = { x: 0, y: 0, active: false };
+        this.dx = 0;
+        this.dy = 0;
         this.actionPressed = false;
+        this.actionJustPressed = false;
+        this._prevAction = false;
+        this.invertControls = false;
 
-        this.setupKeyboardListeners();
-        this.setupTouchListeners();
-    }
-
-    setupKeyboardListeners() {
+        // Keyboard
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') e.preventDefault(); // Prevent scrolling
             this.keys[e.code] = true;
-            if (e.code === 'Space' || e.code === 'KeyE') {
+            if (e.code === 'Space') {
+                e.preventDefault();
                 this.actionPressed = true;
             }
         });
-
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
-            if (e.code === 'Space' || e.code === 'KeyE') {
+            if (e.code === 'Space') {
                 this.actionPressed = false;
             }
         });
-    }
 
-    setupTouchListeners() {
-        const joystickZone = document.getElementById('joystick-zone');
-        const stick = document.getElementById('joystick-stick');
+        // Touch joystick
+        this._touchId = null;
+        this._touchStartX = 0;
+        this._touchStartY = 0;
+        this._joystickDx = 0;
+        this._joystickDy = 0;
+
+        const joystickArea = document.getElementById('joystick-area');
+        const joystickKnob = document.getElementById('joystick-knob');
         const actionBtn = document.getElementById('action-btn');
 
-        if (!joystickZone || !stick || !actionBtn) return;
+        if (joystickArea) {
+            joystickArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                this._touchId = touch.identifier;
+                const rect = joystickArea.getBoundingClientRect();
+                this._touchStartX = rect.left + rect.width / 2;
+                this._touchStartY = rect.top + rect.height / 2;
+            }, { passive: false });
 
-        // Joystick logic
-        let startX, startY;
-        const maxDist = 40; // Max joystick travel distance based on CSS
+            window.addEventListener('touchmove', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === this._touchId) {
+                        const maxDist = 50;
+                        let tdx = touch.clientX - this._touchStartX;
+                        let tdy = touch.clientY - this._touchStartY;
+                        const dist = Math.sqrt(tdx * tdx + tdy * tdy);
+                        if (dist > maxDist) {
+                            tdx = (tdx / dist) * maxDist;
+                            tdy = (tdy / dist) * maxDist;
+                        }
+                        this._joystickDx = tdx / maxDist;
+                        this._joystickDy = tdy / maxDist;
+                        if (joystickKnob) {
+                            joystickKnob.style.transform = `translate(${tdx}px, ${tdy}px)`;
+                        }
+                    }
+                }
+            }, { passive: false });
 
-        joystickZone.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            startX = touch.clientX;
-            startY = touch.clientY;
-            this.joystickData.active = true;
-            this.touchActive = true;
-        });
+            const resetJoystick = (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === this._touchId) {
+                        this._touchId = null;
+                        this._joystickDx = 0;
+                        this._joystickDy = 0;
+                        if (joystickKnob) {
+                            joystickKnob.style.transform = '';
+                        }
+                    }
+                }
+            };
+            window.addEventListener('touchend', resetJoystick);
+            window.addEventListener('touchcancel', resetJoystick);
+        }
 
-        joystickZone.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (!this.joystickData.active) return;
-
-            const touch = e.changedTouches[0];
-            const dx = touch.clientX - startX;
-            const dy = touch.clientY - startY;
-            const distance = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
-            const angle = Math.atan2(dy, dx);
-
-            const moveX = Math.cos(angle) * distance;
-            const moveY = Math.sin(angle) * distance;
-
-            stick.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
-
-            // Normalize -1 to 1
-            this.joystickData.x = moveX / maxDist;
-            this.joystickData.y = moveY / maxDist;
-        });
-
-        joystickZone.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.joystickData.active = false;
-            this.joystickData.x = 0;
-            this.joystickData.y = 0;
-            stick.style.transform = `translate(-50%, -50%)`;
-        });
-
-        // Action Button
-        actionBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.actionPressed = true;
-            this.touchActive = true;
-        });
-
-        actionBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.actionPressed = false;
-        });
+        if (actionBtn) {
+            actionBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.actionPressed = true;
+            }, { passive: false });
+            actionBtn.addEventListener('touchend', () => {
+                this.actionPressed = false;
+            });
+        }
     }
 
-    getInput() {
-        let x = 0;
-        let y = 0;
+    update() {
+        // Keyboard movement
+        let kx = 0, ky = 0;
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) ky -= 1;
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) ky += 1;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) kx -= 1;
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) kx += 1;
 
-        if (this.keys['ArrowUp'] || this.keys['KeyW']) y -= 1;
-        if (this.keys['ArrowDown'] || this.keys['KeyS']) y += 1;
-        if (this.keys['ArrowLeft'] || this.keys['KeyA']) x -= 1;
-        if (this.keys['ArrowRight'] || this.keys['KeyD']) x += 1;
+        // Combine keyboard + joystick
+        this.dx = kx || this._joystickDx;
+        this.dy = ky || this._joystickDy;
 
-        if (this.joystickData.active) {
-            x = this.joystickData.x;
-            y = this.joystickData.y;
+        // Apply invert
+        if (this.invertControls) {
+            this.dx = -this.dx;
+            this.dy = -this.dy;
         }
 
-        // Normalize vector if length > 1 (so diagonal isn't faster)
-        const len = Math.sqrt(x * x + y * y);
-        if (len > 1) {
-            x /= len;
-            y /= len;
+        // Normalize diagonal
+        const mag = Math.sqrt(this.dx * this.dx + this.dy * this.dy);
+        if (mag > 1) {
+            this.dx /= mag;
+            this.dy /= mag;
         }
 
-        return { x, y, action: this.actionPressed };
+        // Action edge detection
+        this.actionJustPressed = this.actionPressed && !this._prevAction;
+        this._prevAction = this.actionPressed;
+    }
+
+    get isMoving() {
+        return Math.abs(this.dx) > 0.1 || Math.abs(this.dy) > 0.1;
     }
 }

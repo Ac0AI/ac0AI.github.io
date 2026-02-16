@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flyttsmart 3D 🚚</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚚</text></svg>">
-    <title>Flyttsmart 🚚</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
@@ -27,10 +26,111 @@
         firebase.initializeApp(firebaseConfig);
         window.leaderboardDB = firebase.database();
     </script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js"
+        }
+    }
+    </script>
 </head>
 
 <body>
     <div id="game-container"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+        <div id="hud-left">
+            <div id="score">Poäng: 0</div>
+            <div id="timer">Tid: 60</div>
+            <div id="level">Bana 1 (0/15)</div>
+            <div id="combo" class="hidden">🔥 x2 COMBO!</div>
+        </div>
+        <div id="hud-right">
+            <span id="vol-down" class="vol-btn">➖</span>
+            <span id="vol-up" class="vol-btn">➕</span>
+            <span id="mute-btn" class="vol-btn">🔊</span>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <div class="overlay-content">
+            <h1 id="game-title">🚚 FLYTTSMART 3D 🏠</h1>
+            <p class="tagline">Flytta möblerna — Undvik fåren!</p>
+            <div class="instructions">
+                🎯 Bär saker från 🚚 till 🏠<br>
+                ⬆️⬇️⬅️➡️ Flytta | SPACE Plocka/Släpp<br>
+                ⭐ Samla power-ups | 🐑 Undvik fåren!
+            </div>
+            <button id="start-btn">▶ STARTA SPELET</button>
+            <div class="leaderboard-section">
+                <h2>🏆 TOPPLISTA</h2>
+                <div id="start-leaderboard">Laddar...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="hidden">
+        <div class="overlay-content">
+            <h1 class="gameover-title">GAME OVER</h1>
+            <p id="gameover-reason"></p>
+            <p id="gameover-stats"></p>
+            <div id="initials-section">
+                <p>Skriv 3 initialer för topplistan:</p>
+                <div id="initial-boxes"></div>
+                <p class="hint-text">(Backspace = ångra)</p>
+                <p id="submit-status"></p>
+            </div>
+            <div class="leaderboard-section">
+                <h2>🏆 TOPPLISTA 🏆</h2>
+                <div id="gameover-leaderboard"></div>
+            </div>
+            <button id="restart-btn">🔄 SPELA IGEN</button>
+        </div>
+    </div>
+
+    <!-- Level Transition Screen -->
+    <div id="level-screen" class="hidden">
+        <div class="overlay-content">
+            <h1 id="level-complete-title"></h1>
+            <p id="level-bonus"></p>
+            <p id="level-subtitle">Fåren blir större nu!</p>
+            <button id="next-level-btn"></button>
+        </div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victory-screen" class="hidden">
+        <div class="overlay-content">
+            <h1 class="victory-title">🎉 DU VANN! 🎉</h1>
+            <p id="victory-score"></p>
+            <p>Alla 5 banor klarade!</p>
+            <button id="victory-restart-btn">🔄 SPELA IGEN</button>
+        </div>
+    </div>
+
+    <!-- Event Banner -->
+    <div id="event-banner" class="hidden"></div>
+
+    <!-- Power-up Toast -->
+    <div id="powerup-toast" class="hidden"></div>
+
+    <!-- Floating Points Container -->
+    <div id="floating-points"></div>
+
+    <!-- Mobile Touch Controls -->
+    <div id="touch-controls">
+        <div id="joystick-area">
+            <div id="joystick-base">
+                <div id="joystick-knob"></div>
+            </div>
+        </div>
+        <button id="action-btn">✋</button>
+    </div>
+
     <script type="module" src="src/main.js"></script>
 </body>
 
