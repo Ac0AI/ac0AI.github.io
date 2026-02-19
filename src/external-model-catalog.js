@@ -206,7 +206,7 @@ class ExternalModelCatalog {
         if (Array.isArray(curatedIds) && curatedIds.length > 0) {
             const curatedSource = curatedIds
                 .map(id => this.modelById.get(id))
-                .filter(meta => meta && hasTag(meta, 'furniture'));
+                .filter(meta => meta && hasTag(meta, 'furniture') && isPortableFurniture(meta));
             if (curatedSource.length > 0) {
                 this._furnitureSourceCache.set(type, curatedSource);
                 return curatedSource;

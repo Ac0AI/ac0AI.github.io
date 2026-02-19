@@ -620,6 +620,66 @@ const FURNITURE_COLORS = {
     vase: 0x2980b9,
 };
 
+const FURNITURE_SURFACES = {
+    box: 'wood',
+    sofa: 'fabric',
+    tv: 'metal',
+    lamp: 'metal',
+    plant: 'painted',
+    bookshelf: 'wood',
+    chair: 'wood',
+    fridge: 'metal',
+    console: 'metal',
+    freezer: 'metal',
+    cd: 'metal',
+    radio: 'metal',
+    guitar: 'wood',
+    clock: 'metal',
+    washer: 'metal',
+    table: 'wood',
+    mirror: 'metal',
+    rug: 'fabric',
+    piano: 'wood',
+    microwave: 'metal',
+    vase: 'painted',
+};
+
+function _isNearWhite(material) {
+    if (!material?.color) return false;
+    const { r, g, b } = material.color;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const brightness = (r + g + b) / 3;
+    const saturation = max - min;
+    return brightness > 0.9 && saturation < 0.08;
+}
+
+function _hasWorkingMap(material) {
+    return !!(material?.map && material.map.image);
+}
+
+function _buildExternalReskinMaterial(type, sourceMaterial) {
+    const accent = new THREE.Color(FURNITURE_COLORS[type] || 0xD2B48C);
+    const surface = FURNITURE_SURFACES[type] || 'painted';
+    const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
+
+    if (['fridge', 'washer', 'freezer', 'microwave', 'clock', 'mirror', 'cd'].includes(type)) {
+        accent.lerp(new THREE.Color(0xdfe8ef), 0.35);
+    }
+    if (type === 'tv' || type === 'console') {
+        accent.lerp(new THREE.Color(0x263544), 0.45);
+    }
+
+    return new THREE.MeshStandardMaterial({
+        color: accent,
+        ...surfaceProps,
+        roughness: THREE.MathUtils.clamp(surfaceProps.roughness ?? 0.62, 0.35, 0.9),
+        metalness: THREE.MathUtils.clamp(surfaceProps.metalness ?? 0.08, 0.02, 0.35),
+        transparent: !!sourceMaterial?.transparent && (sourceMaterial?.opacity ?? 1) < 1,
+        opacity: sourceMaterial?.transparent ? sourceMaterial.opacity : 1,
+    });
+}
+
 function _polishExternalFurnitureMaterials(root, type) {
     const accent = new THREE.Color(FURNITURE_COLORS[type] || 0xD2B48C);
     root.traverse((node) => {
@@ -627,14 +687,17 @@ function _polishExternalFurnitureMaterials(root, type) {
         const mats = Array.isArray(node.material) ? node.material : [node.material];
         const polished = mats.map((material) => {
             if (!material || !material.isMaterial) return material;
-            const next = material.clone();
+            const needsReskin = !_hasWorkingMap(material) || _isNearWhite(material);
+            const next = needsReskin
+                ? _buildExternalReskinMaterial(type, material)
+                : material.clone();
 
             if (next.color && !next.map) {
                 const brightness = (next.color.r + next.color.g + next.color.b) / 3;
                 if (brightness > 0.78) {
-                    next.color.lerp(accent, 0.42);
+                    next.color.lerp(accent, 0.5);
                 } else {
-                    next.color.lerp(accent, 0.16);
+                    next.color.lerp(accent, 0.2);
                 }
             }
 
@@ -644,6 +707,7 @@ function _polishExternalFurnitureMaterials(root, type) {
             if (typeof next.metalness === 'number') {
                 next.metalness = THREE.MathUtils.clamp(next.metalness, 0.02, 0.2);
             }
+            next.envMapIntensity = Math.max(0.35, next.envMapIntensity || 0.35);
             return next;
         });
         node.material = Array.isArray(node.material) ? polished : polished[0];
