@@ -6,6 +6,7 @@ import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 export const EXTERNAL_PLAYER_ENABLED = true;
 export const EXTERNAL_DOG_ENABLED = false;
 export const EXTERNAL_FURNITURE_ENABLED = true;
+const STRICT_CURATED_FURNITURE = true;
 
 // ============================================================
 // LOW-POLY PROCEDURAL 3D MODEL FACTORY
@@ -141,6 +142,48 @@ function _tryCreateExternalRole(role, opts = {}) {
     return root ? _prepareExternalModel(root, { ...opts, validationType: role }) : null;
 }
 
+function _polishExternalPlayerMaterials(root) {
+    const suitColor = new THREE.Color(0x2f76d8);
+    const skinColor = new THREE.Color(0xffcfb0);
+    const suitSurface = getSurfaceMaterialProps(texturePack, 'fabric');
+    const skinSurface = getSurfaceMaterialProps(texturePack, 'painted');
+
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        const nextMats = mats.map((material) => {
+            if (!material || !material.isMaterial) return material;
+            const next = material.clone();
+            const brightness = next.color
+                ? (next.color.r + next.color.g + next.color.b) / 3
+                : 0.5;
+            const isSkinLike = brightness > 0.66 && next.color && next.color.r > next.color.b;
+            const targetColor = isSkinLike ? skinColor : suitColor;
+            const props = isSkinLike ? skinSurface : suitSurface;
+
+            if (!next.map && props.map) {
+                next.map = props.map;
+            }
+            if (next.color) {
+                next.color.lerp(targetColor, isSkinLike ? 0.48 : 0.58);
+            }
+            if (typeof next.roughness === 'number') {
+                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.42, 0.86);
+            } else {
+                next.roughness = props.roughness;
+            }
+            if (typeof next.metalness === 'number') {
+                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.02, 0.16);
+            } else {
+                next.metalness = props.metalness;
+            }
+            next.envMapIntensity = Math.max(0.32, next.envMapIntensity || 0.32);
+            return next;
+        });
+        node.material = Array.isArray(node.material) ? nextMats : nextMats[0];
+    });
+}
+
 function buildStandardMaterial(color, defaults, opts = {}) {
     const { surface = 'painted', ...matOpts } = opts;
     const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
@@ -189,6 +232,7 @@ export function createPlayer() {
             receiveShadow: true
         });
         if (external) {
+            _polishExternalPlayerMaterials(external);
             external.userData.type = 'player';
             return external;
         }
@@ -779,23 +823,28 @@ function _applyProceduralFurnitureFinish(root, type) {
 }
 
 export function createFurniture(type) {
-    if (EXTERNAL_FURNITURE_ENABLED && externalModelCatalog.ready) {
-        const external = externalModelCatalog.cloneFurnitureForType(type);
-        if (external) {
-            const spec = _specForType(type);
-            const prepared = _prepareExternalModel(external, {
-                ...spec,
-                validationType: type,
-                castShadow: false,
-                receiveShadow: true
-            });
-            if (prepared) {
-                _polishExternalFurnitureMaterials(prepared, type);
-                prepared.userData.type = 'furniture';
-                prepared.userData.furnitureType = type;
-                return prepared;
-            }
+    if (EXTERNAL_FURNITURE_ENABLED) {
+        if (!externalModelCatalog.ready) {
+            return STRICT_CURATED_FURNITURE ? null : undefined;
         }
+        const external = externalModelCatalog.cloneFurnitureForType(type);
+        if (!external) {
+            return STRICT_CURATED_FURNITURE ? null : undefined;
+        }
+        const spec = _specForType(type);
+        const prepared = _prepareExternalModel(external, {
+            ...spec,
+            validationType: type,
+            castShadow: false,
+            receiveShadow: true
+        });
+        if (prepared) {
+            _polishExternalFurnitureMaterials(prepared, type);
+            prepared.userData.type = 'furniture';
+            prepared.userData.furnitureType = type;
+            return prepared;
+        }
+        return STRICT_CURATED_FURNITURE ? null : undefined;
     }
 
     const group = new THREE.Group();

@@ -149,6 +149,10 @@ async function run() {
 
     await page.click('#start-btn', { force: true });
     await page.waitForSelector('#hud:not(.hidden)', { timeout: 8000 });
+    await page.waitForFunction(() => {
+      const game = window.__game;
+      return !!game && Array.isArray(game.furnitureItems) && game.furnitureItems.length > 0;
+    }, { timeout: 12000 });
 
     const pickupDropFlow = await page.evaluate(() => {
       const game = window.__game;

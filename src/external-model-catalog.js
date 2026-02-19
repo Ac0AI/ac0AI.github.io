@@ -203,14 +203,14 @@ class ExternalModelCatalog {
         }
 
         const curatedIds = CURATED_FURNITURE_BY_TYPE[type];
-        if (Array.isArray(curatedIds) && curatedIds.length > 0) {
-            const curatedSource = curatedIds
-                .map(id => this.modelById.get(id))
-                .filter(meta => meta && hasTag(meta, 'furniture') && isPortableFurniture(meta));
-            if (curatedSource.length > 0) {
-                this._furnitureSourceCache.set(type, curatedSource);
-                return curatedSource;
-            }
+        if (Array.isArray(curatedIds)) {
+            const curatedSource = curatedIds.length > 0
+                ? curatedIds
+                    .map(id => this.modelById.get(id))
+                    .filter(meta => meta && hasTag(meta, 'furniture') && isPortableFurniture(meta))
+                : [];
+            this._furnitureSourceCache.set(type, curatedSource);
+            return curatedSource;
         }
 
         const typeToHints = {

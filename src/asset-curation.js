@@ -23,11 +23,17 @@ export const CURATED_FURNITURE_BY_TYPE = Object.freeze({
 });
 
 export const CURATED_ROLE_MODELS = Object.freeze({
-    player: [],
+    player: ['u_body_body_010_static'],
     dog: [],
     truck: ['u_van_van_'],
     building: ['u_building_eco_building_terrace_'],
 });
+
+export const CURATED_FURNITURE_TYPES = Object.freeze(
+    Object.entries(CURATED_FURNITURE_BY_TYPE)
+        .filter(([, ids]) => Array.isArray(ids) && ids.length > 0)
+        .map(([type]) => type)
+);
 
 export const MAX_WORLD_RADIUS_PER_TYPE = Object.freeze({
     default: 2.8,

@@ -15,6 +15,7 @@ import { EnemyManager } from './enemies.js';
 import { PowerUpManager } from './powerups.js';
 import { externalModelCatalog } from './external-model-catalog.js';
 import { PLAYER_MOTION_PRESETS, VISUAL_PROFILE } from './visual-profile.js';
+import { CURATED_FURNITURE_TYPES } from './asset-curation.js';
 
 // ============================================================
 // GAME — core orchestrator
@@ -29,11 +30,9 @@ const POINT_VALUES = {
     table: 3, mirror: 4, rug: 2, piano: 5, microwave: 3, vase: 2
 };
 
-const FURNITURE_TYPES = [
-    'sofa', 'tv', 'lamp', 'plant', 'bookshelf', 'chair',
-    'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer',
-    'table', 'mirror', 'rug', 'piano', 'microwave', 'vase', 'box'
-];
+const FURNITURE_TYPES = CURATED_FURNITURE_TYPES.length > 0
+    ? [...CURATED_FURNITURE_TYPES]
+    : ['box', 'sofa', 'lamp', 'plant', 'chair', 'fridge', 'table', 'washer', 'bookshelf', 'microwave'];
 const PROCEDURAL_FURNITURE_SCALE = 1.3;
 const PROCEDURAL_CARRY_SCALE_MULT = 1.5 / PROCEDURAL_FURNITURE_SCALE;
 const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;
@@ -294,8 +293,21 @@ export class Game {
     }
 
     _spawnFurniture(count = 1) {
-        for (let i = 0; i < count; i++) {
-            this._spawnOneFurniture();
+        let spawned = 0;
+        let attempts = 0;
+        const maxAttempts = Math.max(6, count * 8);
+        while (spawned < count && attempts < maxAttempts) {
+            if (this._spawnOneFurniture()) {
+                spawned++;
+            }
+            attempts++;
+        }
+        if (spawned < count && this.state === 'PLAYING') {
+            this._setManagedTimeout(() => {
+                if (this.state === 'PLAYING') {
+                    this._spawnFurniture(count - spawned);
+                }
+            }, 700);
         }
     }
 
@@ -312,6 +324,9 @@ export class Game {
     _spawnOneFurniture() {
         const type = FURNITURE_TYPES[Math.floor(Math.random() * FURNITURE_TYPES.length)];
         const model = createFurniture(type);
+        if (!model) {
+            return false;
+        }
         if (EXTERNAL_FURNITURE_ENABLED && externalModelCatalog.ready && !model?.userData?.externalModel) {
             this._scheduleFurnitureUpgradeRetries();
         }
@@ -352,6 +367,7 @@ export class Game {
         }
 
         this.furnitureItems.push(item);
+        return true;
     }
 
     _queueExternalModelUpgrade() {
@@ -627,7 +643,19 @@ export class Game {
 
     _animatePlayerMotion(dt) {
         const rig = this.playerModel?.userData?.animRig;
-        if (!rig) return;
+        if (!rig) {
+            const moving = this.input.isMoving;
+            const carrying = !!this.carriedItem;
+            const targetLean = moving ? (carrying ? 0.045 : 0.07) : 0;
+            this._playerAnimTime += dt * (moving ? 7.6 : 3.4);
+            const sway = Math.sin(this._playerAnimTime * 1.7) * targetLean;
+            this.playerModel.rotation.z = THREE.MathUtils.lerp(
+                this.playerModel.rotation.z || 0,
+                sway,
+                Math.min(1, dt * 7.2)
+            );
+            return;
+        }
 
         const moving = this.input.isMoving;
         const carrying = !!this.carriedItem;
