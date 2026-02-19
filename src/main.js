@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { Game } from './game.js';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/shaders/FXAAShader.js';
 
 // ============================================================
 // MAIN ENTRY POINT — Three.js scene setup + game loop
@@ -13,9 +18,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.16;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -47,6 +52,26 @@ camera.updateProjectionMatrix();
 // Game
 const game = new Game(scene, camera);
 
+// Post-processing for a richer arcade look
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.48,
+    0.72,
+    0.22
+);
+composer.addPass(bloomPass);
+
+const fxaaPass = new ShaderPass(FXAAShader);
+const pixelRatio = renderer.getPixelRatio();
+fxaaPass.material.uniforms.resolution.value.set(
+    1 / (window.innerWidth * pixelRatio),
+    1 / (window.innerHeight * pixelRatio)
+);
+composer.addPass(fxaaPass);
+
 // Animation loop
 let lastTime = 0;
 
@@ -57,7 +82,7 @@ function animate(time) {
     lastTime = time;
 
     game.update(dt);
-    renderer.render(scene, camera);
+    composer.render();
 }
 
 requestAnimationFrame(animate);
@@ -75,4 +100,12 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 
     renderer.setSize(w, h);
+    composer.setSize(w, h);
+    bloomPass.setSize(w, h);
+
+    const pr = renderer.getPixelRatio();
+    fxaaPass.material.uniforms.resolution.value.set(
+        1 / (w * pr),
+        1 / (h * pr)
+    );
 });

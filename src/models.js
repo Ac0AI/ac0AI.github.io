@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 
 // ============================================================
 // LOW-POLY PROCEDURAL 3D MODEL FACTORY
@@ -6,9 +7,22 @@ import * as THREE from 'three';
 // ============================================================
 
 // Helper: create a rounded box-ish mesh
+const texturePack = createTexturePack();
+
+function buildStandardMaterial(color, defaults, opts = {}) {
+    const { surface = 'painted', ...matOpts } = opts;
+    const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
+    return new THREE.MeshStandardMaterial({
+        color,
+        ...defaults,
+        ...surfaceProps,
+        ...matOpts
+    });
+}
+
 function box(w, h, d, color, opts = {}) {
     const geo = new THREE.BoxGeometry(w, h, d);
-    const mat = new THREE.MeshLambertMaterial({ color, ...opts });
+    const mat = buildStandardMaterial(color, { roughness: 0.62, metalness: 0.08 }, opts);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -17,15 +31,15 @@ function box(w, h, d, color, opts = {}) {
 
 function sphere(r, color, opts = {}) {
     const geo = new THREE.SphereGeometry(r, 12, 8);
-    const mat = new THREE.MeshLambertMaterial({ color, ...opts });
+    const mat = buildStandardMaterial(color, { roughness: 0.5, metalness: 0.06 }, opts);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     return mesh;
 }
 
-function cylinder(rTop, rBot, h, color, segs = 8) {
+function cylinder(rTop, rBot, h, color, segs = 8, opts = {}) {
     const geo = new THREE.CylinderGeometry(rTop, rBot, h, segs);
-    const mat = new THREE.MeshLambertMaterial({ color });
+    const mat = buildStandardMaterial(color, { roughness: 0.58, metalness: 0.08 }, opts);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     return mesh;
@@ -96,22 +110,22 @@ export function createTruck() {
     const group = new THREE.Group();
 
     // Cargo bed (open top)
-    const bed = box(3, 1, 2, 0xff8c00);
+    const bed = box(3, 1, 2, 0xff8c00, { surface: 'metal' });
     bed.position.set(0, 0.5, 0);
     group.add(bed);
 
     // Cabin
-    const cabin = box(1.2, 1.3, 1.8, 0xe74c3c);
+    const cabin = box(1.2, 1.3, 1.8, 0xe74c3c, { surface: 'metal' });
     cabin.position.set(-1.6, 0.65, 0);
     group.add(cabin);
 
     // Windshield
-    const windshield = box(0.05, 0.6, 1.2, 0x87CEEB, { transparent: true, opacity: 0.6 });
+    const windshield = box(0.05, 0.6, 1.2, 0x87CEEB, { surface: 'metal', transparent: true, opacity: 0.6 });
     windshield.position.set(-0.97, 0.85, 0);
     group.add(windshield);
 
     // Roof
-    const roof = box(1.2, 0.1, 1.8, 0xc0392b);
+    const roof = box(1.2, 0.1, 1.8, 0xc0392b, { surface: 'metal' });
     roof.position.set(-1.6, 1.35, 0);
     group.add(roof);
 
@@ -121,13 +135,13 @@ export function createTruck() {
         [0.8, 0.2, 1.1], [0.8, 0.2, -1.1]
     ];
     wheelPositions.forEach(([x, y, z]) => {
-        const wheel = cylinder(0.25, 0.25, 0.2, 0x1a1a1a, 12);
+        const wheel = cylinder(0.25, 0.25, 0.2, 0x1a1a1a, 12, { surface: 'stone', roughness: 0.95, metalness: 0.01 });
         wheel.rotation.x = Math.PI / 2;
         wheel.position.set(x, y, z);
         group.add(wheel);
 
         // Hub
-        const hub = cylinder(0.1, 0.1, 0.22, 0x999999, 8);
+        const hub = cylinder(0.1, 0.1, 0.22, 0x999999, 8, { surface: 'metal' });
         hub.rotation.x = Math.PI / 2;
         hub.position.set(x, y, z);
         group.add(hub);
@@ -154,13 +168,13 @@ export function createHouse() {
     const group = new THREE.Group();
 
     // Walls
-    const walls = box(3.5, 2.5, 3, 0xffeaa7);
+    const walls = box(3.5, 2.5, 3, 0xffeaa7, { surface: 'painted' });
     walls.position.y = 1.25;
     group.add(walls);
 
     // Roof (pyramid shape using a cone)
     const roofGeo = new THREE.ConeGeometry(3, 1.8, 4);
-    const roofMat = new THREE.MeshLambertMaterial({ color: 0xc0392b });
+    const roofMat = buildStandardMaterial(0xc0392b, { roughness: 0.72, metalness: 0.05 }, { surface: 'fabric' });
     const roof = new THREE.Mesh(roofGeo, roofMat);
     roof.position.y = 3.4;
     roof.rotation.y = Math.PI / 4;
@@ -168,7 +182,7 @@ export function createHouse() {
     group.add(roof);
 
     // Door
-    const door = box(0.6, 1.2, 0.05, 0x8B4513);
+    const door = box(0.6, 1.2, 0.05, 0x8B4513, { surface: 'wood' });
     door.position.set(0, 0.6, 1.53);
     group.add(door);
 
@@ -188,7 +202,7 @@ export function createHouse() {
             0.5,
             z === 0 ? 0.6 : 0.05,
             0x87CEEB,
-            { transparent: true, opacity: 0.5 }
+            { surface: 'metal', transparent: true, opacity: 0.5 }
         );
         win.position.set(x, y, z);
         group.add(win);
@@ -198,7 +212,8 @@ export function createHouse() {
             z !== 0 ? 0.7 : 0.06,
             0.6,
             z === 0 ? 0.7 : 0.06,
-            0xffffff
+            0xffffff,
+            { surface: 'wood' }
         );
         frame.position.set(x, y, z > 0 ? z - 0.01 : z < 0 ? z + 0.01 : z);
         if (z === 0) frame.position.x = x > 0 ? x - 0.01 : x + 0.01;
@@ -425,7 +440,7 @@ export function createFurniture(type) {
             group.add(pole);
             const shade = new THREE.Mesh(
                 new THREE.ConeGeometry(0.25, 0.3, 8, 1, true),
-                new THREE.MeshLambertMaterial({ color: 0xf1c40f, side: THREE.DoubleSide })
+                new THREE.MeshStandardMaterial({ color: 0xf1c40f, roughness: 0.64, metalness: 0.08, side: THREE.DoubleSide })
             );
             shade.position.y = 0.75;
             shade.castShadow = true;

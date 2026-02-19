@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createTruck, createHouse } from './models.js';
+import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 
 // Level environment themes
 const LEVEL_THEMES = [
@@ -67,6 +68,12 @@ export class World {
         this.obstacles = [];  // { x, z, radius } for collision
         this.particles = null;
         this.skyDome = null;
+        this.texturePack = createTexturePack();
+        this.truckGlowLight = null;
+        this.houseGlowLight = null;
+        this.truckBeacon = null;
+        this.houseBeacon = null;
+        this._fxPulseTime = 0;
 
         // World positions (play area ~40x40, centered at origin)
         this.truckPos = new THREE.Vector3(-10, 0, 10);
@@ -96,7 +103,10 @@ export class World {
             colors.push(c.r, c.g, c.b);
         }
         groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-        const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+        const groundMat = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            ...getSurfaceMaterialProps(this.texturePack, 'grass')
+        });
         this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.groundMesh.receiveShadow = true;
@@ -158,6 +168,7 @@ export class World {
         // Zone indicators (subtle rings on ground)
         this._createZoneIndicator(this.truckPos, this.truckZoneRadius, 0xff8c00);
         this._createZoneIndicator(this.housePos, this.houseZoneRadius, 0x27ae60);
+        this._createArcadeBeacons();
 
         // Decorations (trees, rocks etc.)
         this._addDecorations(level);
@@ -180,7 +191,10 @@ export class World {
             baseColor.r = Math.max(0, Math.min(1, baseColor.r + variation));
             baseColor.g = Math.max(0, Math.min(1, baseColor.g + variation * 0.8));
             baseColor.b = Math.max(0, Math.min(1, baseColor.b + variation * 0.3));
-            const patchMat = new THREE.MeshLambertMaterial({ color: baseColor });
+            const patchMat = new THREE.MeshStandardMaterial({
+                color: baseColor,
+                ...getSurfaceMaterialProps(this.texturePack, 'grass')
+            });
             const patch = new THREE.Mesh(patchGeo, patchMat);
             patch.rotation.x = -Math.PI / 2;
             patch.position.set(
@@ -201,12 +215,13 @@ export class World {
                 const h = 0.15 + Math.random() * 0.25;
                 const blade = new THREE.Mesh(
                     new THREE.ConeGeometry(0.04, h, 4),
-                    new THREE.MeshLambertMaterial({
+                    new THREE.MeshStandardMaterial({
                         color: new THREE.Color(theme.ground).offsetHSL(
                             (Math.random() - 0.5) * 0.06,
                             (Math.random() - 0.5) * 0.15,
                             (Math.random() - 0.5) * 0.2
-                        )
+                        ),
+                        ...getSurfaceMaterialProps(this.texturePack, 'grass')
                     })
                 );
                 blade.position.set(
@@ -236,7 +251,7 @@ export class World {
             for (let p = 0; p < 4; p++) {
                 const petal = new THREE.Mesh(
                     new THREE.SphereGeometry(0.05, 6, 4),
-                    new THREE.MeshLambertMaterial({ color: fc })
+                    new THREE.MeshStandardMaterial({ color: fc, roughness: 0.52, metalness: 0.06 })
                 );
                 const angle = (p / 4) * Math.PI * 2;
                 petal.position.set(Math.cos(angle) * 0.04, 0.08, Math.sin(angle) * 0.04);
@@ -245,14 +260,14 @@ export class World {
             // Center
             const center = new THREE.Mesh(
                 new THREE.SphereGeometry(0.03, 6, 4),
-                new THREE.MeshLambertMaterial({ color: 0xf1c40f })
+                new THREE.MeshStandardMaterial({ color: 0xf1c40f, roughness: 0.5, metalness: 0.12 })
             );
             center.position.y = 0.08;
             flowerGroup.add(center);
             // Stem
             const stem = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.008, 0.008, 0.08, 4),
-                new THREE.MeshLambertMaterial({ color: 0x27ae60 })
+                new THREE.MeshStandardMaterial({ color: 0x27ae60, roughness: 0.84, metalness: 0.04 })
             );
             stem.position.y = 0.04;
             flowerGroup.add(stem);
@@ -270,10 +285,11 @@ export class World {
     _createPath() {
         // Subtle dirt path from truck to house area
         const pathGeo = new THREE.PlaneGeometry(2, 30);
-        const pathMat = new THREE.MeshLambertMaterial({
+        const pathMat = new THREE.MeshStandardMaterial({
             color: 0xc9a55a,
             transparent: true,
-            opacity: 0.3
+            opacity: 0.32,
+            ...getSurfaceMaterialProps(this.texturePack, 'dirt')
         });
         const path = new THREE.Mesh(pathGeo, pathMat);
         path.rotation.x = -Math.PI / 2;
@@ -284,10 +300,14 @@ export class World {
 
     _createZoneIndicator(pos, radius, color) {
         const ringGeo = new THREE.RingGeometry(radius - 0.15, radius, 32);
-        const ringMat = new THREE.MeshBasicMaterial({
+        const ringMat = new THREE.MeshStandardMaterial({
             color,
+            emissive: new THREE.Color(color).multiplyScalar(0.55),
+            emissiveIntensity: 0.4,
             transparent: true,
             opacity: 0.25,
+            roughness: 0.44,
+            metalness: 0.06,
             side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -297,16 +317,57 @@ export class World {
 
         // Pulsing disc
         const discGeo = new THREE.CircleGeometry(radius, 32);
-        const discMat = new THREE.MeshBasicMaterial({
+        const discMat = new THREE.MeshStandardMaterial({
             color,
+            emissive: new THREE.Color(color).multiplyScalar(0.25),
+            emissiveIntensity: 0.25,
             transparent: true,
             opacity: 0.08,
+            roughness: 0.5,
+            metalness: 0.04,
             side: THREE.DoubleSide
         });
         const disc = new THREE.Mesh(discGeo, discMat);
         disc.rotation.x = -Math.PI / 2;
         disc.position.set(pos.x, 0.02, pos.z);
         this.scene.add(disc);
+    }
+
+    _createArcadeBeacons() {
+        if (this.truckGlowLight) this.scene.remove(this.truckGlowLight);
+        if (this.houseGlowLight) this.scene.remove(this.houseGlowLight);
+        if (this.truckBeacon) this.scene.remove(this.truckBeacon);
+        if (this.houseBeacon) this.scene.remove(this.houseBeacon);
+
+        this.truckGlowLight = new THREE.PointLight(0xffaa56, 1.2, 16, 2);
+        this.truckGlowLight.position.set(this.truckPos.x, 1.35, this.truckPos.z);
+        this.scene.add(this.truckGlowLight);
+
+        this.houseGlowLight = new THREE.PointLight(0x66ffd1, 1.05, 17, 2);
+        this.houseGlowLight.position.set(this.housePos.x, 1.35, this.housePos.z);
+        this.scene.add(this.houseGlowLight);
+
+        const truckBeaconMat = new THREE.MeshStandardMaterial({
+            color: 0xffc16f,
+            emissive: 0xffa347,
+            emissiveIntensity: 1.2,
+            roughness: 0.22,
+            metalness: 0.12
+        });
+        this.truckBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), truckBeaconMat);
+        this.truckBeacon.position.set(this.truckPos.x, 1.15, this.truckPos.z);
+        this.scene.add(this.truckBeacon);
+
+        const houseBeaconMat = new THREE.MeshStandardMaterial({
+            color: 0xa9ffe9,
+            emissive: 0x52ffd0,
+            emissiveIntensity: 1.1,
+            roughness: 0.24,
+            metalness: 0.1
+        });
+        this.houseBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), houseBeaconMat);
+        this.houseBeacon.position.set(this.housePos.x, 1.15, this.housePos.z);
+        this.scene.add(this.houseBeacon);
     }
 
     _addDecorations(level) {
@@ -363,7 +424,11 @@ export class World {
         // Trunk with bark texture variation
         const trunk = new THREE.Mesh(
             new THREE.CylinderGeometry(0.15, 0.25, 1.5, 6),
-            new THREE.MeshPhongMaterial({ color: trunkColor, shininess: 5, flatShading: true })
+            new THREE.MeshStandardMaterial({
+                color: trunkColor,
+                flatShading: true,
+                ...getSurfaceMaterialProps(this.texturePack, 'bark')
+            })
         );
         trunk.position.y = 0.75;
         trunk.castShadow = true;
@@ -377,7 +442,11 @@ export class World {
             leafColor.offsetHSL(0, 0, (i - 1) * 0.06);
             const cone = new THREE.Mesh(
                 new THREE.ConeGeometry(r, h, 7),
-                new THREE.MeshPhongMaterial({ color: leafColor, shininess: 10, flatShading: true })
+                new THREE.MeshStandardMaterial({
+                    color: leafColor,
+                    flatShading: true,
+                    ...getSurfaceMaterialProps(this.texturePack, 'grass')
+                })
             );
             cone.position.y = y;
             cone.castShadow = true;
@@ -399,7 +468,11 @@ export class World {
         const rockColor = new THREE.Color(grey, grey, grey * 0.95);
         const rock = new THREE.Mesh(
             new THREE.DodecahedronGeometry(r, 0),
-            new THREE.MeshPhongMaterial({ color: rockColor, shininess: 15, flatShading: true })
+            new THREE.MeshStandardMaterial({
+                color: rockColor,
+                flatShading: true,
+                ...getSurfaceMaterialProps(this.texturePack, 'stone')
+            })
         );
         rock.position.y = r * 0.45;
         rock.rotation.set(Math.random(), Math.random(), Math.random());
@@ -412,7 +485,11 @@ export class World {
             const r2 = r * 0.4;
             const rock2 = new THREE.Mesh(
                 new THREE.DodecahedronGeometry(r2, 0),
-                new THREE.MeshPhongMaterial({ color: rockColor.clone().offsetHSL(0, 0, 0.05), shininess: 10, flatShading: true })
+                new THREE.MeshStandardMaterial({
+                    color: rockColor.clone().offsetHSL(0, 0, 0.05),
+                    flatShading: true,
+                    ...getSurfaceMaterialProps(this.texturePack, 'stone')
+                })
             );
             rock2.position.set(r * 0.7, r2 * 0.4, r * 0.3);
             rock2.rotation.set(Math.random(), Math.random(), Math.random());
@@ -457,6 +534,19 @@ export class World {
         if (this.hemiLight) {
             this.hemiLight.color.setHex(theme.sky);
             this.hemiLight.groundColor.setHex(theme.ground);
+        }
+        if (this.truckGlowLight && this.houseGlowLight) {
+            const nightBoost = level === 4 ? 1.35 : 1.0;
+            this.truckGlowLight.intensity = 1.2 * nightBoost;
+            this.houseGlowLight.intensity = 1.05 * nightBoost;
+            this.truckGlowLight.color.setHex(level === 5 ? 0xff7a4f : 0xffaa56);
+            this.houseGlowLight.color.setHex(level === 3 ? 0xc8e9ff : 0x66ffd1);
+        }
+        if (this.truckBeacon?.material) {
+            this.truckBeacon.material.emissiveIntensity = level === 5 ? 1.45 : 1.2;
+        }
+        if (this.houseBeacon?.material) {
+            this.houseBeacon.material.emissiveIntensity = level === 4 ? 1.35 : 1.1;
         }
         this.scene.fog = new THREE.FogExp2(theme.fog, theme.fogDensity);
 
@@ -575,10 +665,11 @@ export class World {
         geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         const mat = new THREE.PointsMaterial({
-            size: 0.12,
+            size: 0.14,
             vertexColors: true,
             transparent: true,
-            opacity: 0.5,
+            opacity: 0.62,
+            blending: THREE.AdditiveBlending,
             sizeAttenuation: true,
             depthWrite: false
         });
@@ -589,6 +680,7 @@ export class World {
     // Call from game update loop
     updateParticles(dt) {
         if (!this.particles) return;
+        this._fxPulseTime += dt;
         const positions = this.particles.geometry.attributes.position.array;
         const count = positions.length / 3;
         for (let i = 0; i < count; i++) {
@@ -602,5 +694,16 @@ export class World {
             if (positions[i * 3 + 1] < 0) positions[i * 3 + 1] = 8;
         }
         this.particles.geometry.attributes.position.needsUpdate = true;
+
+        if (this.truckGlowLight && this.houseGlowLight) {
+            const truckPulse = 1 + Math.sin(this._fxPulseTime * 2.9) * 0.2;
+            const housePulse = 1 + Math.sin(this._fxPulseTime * 2.4 + 1.3) * 0.22;
+            this.truckGlowLight.intensity = 1.2 * truckPulse;
+            this.houseGlowLight.intensity = 1.05 * housePulse;
+        }
+        if (this.truckBeacon?.material && this.houseBeacon?.material) {
+            this.truckBeacon.material.emissiveIntensity = 1.08 + Math.sin(this._fxPulseTime * 2.9) * 0.26;
+            this.houseBeacon.material.emissiveIntensity = 1.02 + Math.sin(this._fxPulseTime * 2.3 + 1.6) * 0.24;
+        }
     }
 }

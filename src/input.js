@@ -31,6 +31,8 @@ export class InputHandler {
         this._touchStartY = 0;
         this._joystickDx = 0;
         this._joystickDy = 0;
+        this._targetJoystickDx = 0;
+        this._targetJoystickDy = 0;
 
         const joystickArea = document.getElementById('joystick-area');
         const joystickKnob = document.getElementById('joystick-knob');
@@ -58,8 +60,8 @@ export class InputHandler {
                             tdx = (tdx / dist) * maxDist;
                             tdy = (tdy / dist) * maxDist;
                         }
-                        this._joystickDx = tdx / maxDist;
-                        this._joystickDy = tdy / maxDist;
+                        this._targetJoystickDx = tdx / maxDist;
+                        this._targetJoystickDy = tdy / maxDist;
                         if (joystickKnob) {
                             joystickKnob.style.transform = `translate(${tdx}px, ${tdy}px)`;
                         }
@@ -71,10 +73,10 @@ export class InputHandler {
                 for (let i = 0; i < e.changedTouches.length; i++) {
                     if (e.changedTouches[i].identifier === this._touchId) {
                         this._touchId = null;
-                        this._joystickDx = 0;
-                        this._joystickDy = 0;
+                        this._targetJoystickDx = 0;
+                        this._targetJoystickDy = 0;
                         if (joystickKnob) {
-                            joystickKnob.style.transform = '';
+                            joystickKnob.style.transform = 'translate(0px, 0px)';
                         }
                     }
                 }
@@ -87,14 +89,27 @@ export class InputHandler {
             actionBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.actionPressed = true;
+                actionBtn.classList.add('is-pressed');
             }, { passive: false });
             actionBtn.addEventListener('touchend', () => {
                 this.actionPressed = false;
+                actionBtn.classList.remove('is-pressed');
+            });
+            actionBtn.addEventListener('touchcancel', () => {
+                this.actionPressed = false;
+                actionBtn.classList.remove('is-pressed');
             });
         }
     }
 
     update() {
+        const stickSmoothing = 0.32;
+        this._joystickDx += (this._targetJoystickDx - this._joystickDx) * stickSmoothing;
+        this._joystickDy += (this._targetJoystickDy - this._joystickDy) * stickSmoothing;
+
+        if (Math.abs(this._joystickDx) < 0.01) this._joystickDx = 0;
+        if (Math.abs(this._joystickDy) < 0.01) this._joystickDy = 0;
+
         // Keyboard movement
         let kx = 0, ky = 0;
         if (this.keys['KeyW'] || this.keys['ArrowUp']) ky -= 1;

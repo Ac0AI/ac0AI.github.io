@@ -50,6 +50,22 @@ export class UIManager {
         this._keyListener = null;
     }
 
+    _hideAllScreens() {
+        this.el.startScreen.classList.add('hidden');
+        this.el.gameoverScreen.classList.add('hidden');
+        this.el.levelScreen.classList.add('hidden');
+        this.el.victoryScreen.classList.add('hidden');
+    }
+
+    _setTextWithPulse(el, text, pulse = true) {
+        if (!el || el.textContent === text) return;
+        el.textContent = text;
+        if (!pulse) return;
+        el.classList.remove('hud-pop');
+        void el.offsetWidth;
+        el.classList.add('hud-pop');
+    }
+
     _setupButtons() {
         this.el.startBtn.addEventListener('click', () => {
             if (this.onStart) this.onStart();
@@ -101,11 +117,9 @@ export class UIManager {
 
     // === SCREEN MANAGEMENT ===
     showStartScreen() {
+        this._hideAllScreens();
         this.el.startScreen.classList.remove('hidden');
         this.el.hud.classList.add('hidden');
-        this.el.gameoverScreen.classList.add('hidden');
-        this.el.levelScreen.classList.add('hidden');
-        this.el.victoryScreen.classList.add('hidden');
     }
 
     hideStartScreen() {
@@ -114,6 +128,7 @@ export class UIManager {
     }
 
     showGameOver(reason, score, level) {
+        this._hideAllScreens();
         this.el.gameoverScreen.classList.remove('hidden');
         this.el.hud.classList.add('hidden');
         this.el.gameoverReason.textContent = reason;
@@ -191,6 +206,7 @@ export class UIManager {
     }
 
     showLevelComplete(levelNum, timeBonus) {
+        this._hideAllScreens();
         this.el.levelScreen.classList.remove('hidden');
         this.el.hud.classList.add('hidden');
         this.el.levelCompleteTitle.textContent = `BANA ${levelNum} KLAR!`;
@@ -205,6 +221,7 @@ export class UIManager {
     }
 
     showVictory(score) {
+        this._hideAllScreens();
         this.el.victoryScreen.classList.remove('hidden');
         this.el.hud.classList.add('hidden');
         this.el.victoryScore.textContent = `Slutpoäng: ${score}`;
@@ -212,13 +229,13 @@ export class UIManager {
 
     // === HUD ===
     updateHUD(score, timeLeft, level, maxLevel, itemsDelivered, levelGoal, comboCount, comboMultiplier) {
-        this.el.score.textContent = `Poäng: ${score}`;
+        this._setTextWithPulse(this.el.score, `Poäng: ${score}`);
 
         if (level >= maxLevel) {
-            this.el.timer.textContent = '∞ ENDLESS';
+            this._setTextWithPulse(this.el.timer, '∞ ENDLESS');
             this.el.timer.classList.remove('urgent');
         } else {
-            this.el.timer.textContent = `Tid: ${timeLeft}`;
+            this._setTextWithPulse(this.el.timer, `Tid: ${timeLeft}`);
             if (timeLeft <= 10 && timeLeft > 0) {
                 this.el.timer.classList.add('urgent');
             } else {
@@ -227,14 +244,14 @@ export class UIManager {
         }
 
         if (level >= maxLevel) {
-            this.el.level.textContent = `Bana ${level} - FINAL!`;
+            this._setTextWithPulse(this.el.level, `Bana ${level} - FINAL!`);
         } else {
-            this.el.level.textContent = `Bana ${level} (${itemsDelivered}/${levelGoal})`;
+            this._setTextWithPulse(this.el.level, `Bana ${level} (${itemsDelivered}/${levelGoal})`);
         }
 
         if (comboCount >= 2) {
             const color = comboMultiplier >= 4 ? '#ff4444' : comboMultiplier >= 3 ? '#ff8800' : '#f1c40f';
-            this.el.combo.textContent = `🔥 x${comboMultiplier} COMBO!`;
+            this._setTextWithPulse(this.el.combo, `🔥 x${comboMultiplier} COMBO!`);
             this.el.combo.style.color = color;
             this.el.combo.classList.remove('hidden');
         } else {
