@@ -1,4 +1,7 @@
 import { Leaderboard } from './firebase.js';
+import { UI_PRESETS, VISUAL_PROFILE } from './visual-profile.js';
+
+const UI_PROFILE = UI_PRESETS[VISUAL_PROFILE] || UI_PRESETS.premium_arcade_v2;
 
 // UI overlay manager — manages all HTML screens
 
@@ -48,9 +51,34 @@ export class UIManager {
         this._initials = '';
         this._initialsSubmitted = false;
         this._keyListener = null;
+        this._uiTimers = new Set();
+        this._applyUIPreset();
+    }
+
+    _applyUIPreset() {
+        const root = document.documentElement;
+        const cssVars = UI_PROFILE.cssVars || {};
+        Object.entries(cssVars).forEach(([key, value]) => {
+            root.style.setProperty(key, value);
+        });
+    }
+
+    _setUITimeout(fn, delayMs) {
+        const id = setTimeout(() => {
+            this._uiTimers.delete(id);
+            fn();
+        }, delayMs);
+        this._uiTimers.add(id);
+        return id;
+    }
+
+    _clearUITimers() {
+        this._uiTimers.forEach(id => clearTimeout(id));
+        this._uiTimers.clear();
     }
 
     _hideAllScreens() {
+        this._clearUITimers();
         this.el.startScreen.classList.add('hidden');
         this.el.gameoverScreen.classList.add('hidden');
         this.el.levelScreen.classList.add('hidden');
@@ -110,8 +138,17 @@ export class UIManager {
         const medals = ['🥇', '🥈', '🥉'];
         container.innerHTML = scores.map((entry, i) => {
             const medal = medals[i] || `${i + 1}.`;
-            const cls = i === 0 ? 'gold' : i < 3 ? 'silver' : '';
-            return `<div class="lb-entry ${cls}">${medal} ${entry.name}  ${entry.score}p  (Bana ${entry.level || '?'})</div>`;
+            const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            const safeName = String(entry.name || '---').slice(0, 8);
+            const score = Number(entry.score || 0);
+            const level = entry.level || '?';
+            return `
+                <div class="lb-entry ${cls}">
+                    <span class="lb-rank">${medal}</span>
+                    <span class="lb-name">${safeName}</span>
+                    <span class="lb-score">${score}p</span>
+                    <span class="lb-level">B${level}</span>
+                </div>`;
         }).join('');
     }
 
@@ -254,8 +291,10 @@ export class UIManager {
             this._setTextWithPulse(this.el.combo, `🔥 x${comboMultiplier} COMBO!`);
             this.el.combo.style.color = color;
             this.el.combo.classList.remove('hidden');
+            this.el.combo.classList.add('combo-live');
         } else {
             this.el.combo.classList.add('hidden');
+            this.el.combo.classList.remove('combo-live');
         }
     }
 
@@ -263,13 +302,15 @@ export class UIManager {
     showPowerUpToast(text) {
         this.el.powerupToast.textContent = text;
         this.el.powerupToast.classList.remove('hidden');
+        this.el.powerupToast.classList.add('is-visible');
         // Reset animation
         this.el.powerupToast.style.animation = 'none';
         void this.el.powerupToast.offsetHeight;
         this.el.powerupToast.style.animation = '';
-        setTimeout(() => {
+        this._setUITimeout(() => {
+            this.el.powerupToast.classList.remove('is-visible');
             this.el.powerupToast.classList.add('hidden');
-        }, 1500);
+        }, UI_PROFILE.timings.toastMs);
     }
 
     showEventBanner(text) {
@@ -286,7 +327,7 @@ export class UIManager {
         el.className = 'announce-text';
         el.textContent = text;
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 2000);
+        this._setUITimeout(() => el.remove(), UI_PROFILE.timings.announcementMs);
     }
 
     // === FLOATING POINTS ===
@@ -297,7 +338,7 @@ export class UIManager {
         el.style.left = `${screenX}px`;
         el.style.top = `${screenY}px`;
         this.el.floatingPoints.appendChild(el);
-        setTimeout(() => el.remove(), 1200);
+        this._setUITimeout(() => el.remove(), UI_PROFILE.timings.floatPointMs);
     }
 
     // === CONFETTI ===

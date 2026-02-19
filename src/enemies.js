@@ -9,6 +9,10 @@ export class EnemyManager {
         this.sheep = [];       // { model, vx, vz, isBoss }
         this.dog = null;
         this.activeDog = false;
+        this.dogAge = 0;
+        this.dogDuration = 15;
+        this.dogSpeed = 8;
+        this.dogEatRadius = 2;
     }
 
     spawnSheep(count, currentLevel, playerPos, screenW, screenH) {
@@ -179,17 +183,14 @@ export class EnemyManager {
             }
         }
 
+        this._updateDog(dt);
         return hitPlayer;
     }
 
     clearAll() {
         this.sheep.forEach(s => this.scene.remove(s.model));
         this.sheep = [];
-        if (this.dog) {
-            this.scene.remove(this.dog);
-            this.dog = null;
-        }
-        this.activeDog = false;
+        this._finishDog();
     }
 
     getSheepCount() {
@@ -205,6 +206,7 @@ export class EnemyManager {
     spawnDog(playerPos, audio) {
         if (this.activeDog) return;
         this.activeDog = true;
+        this.dogAge = 0;
 
         const worldSize = 18;
         const edge = Math.floor(Math.random() * 4);
@@ -221,58 +223,55 @@ export class EnemyManager {
         this.scene.add(this.dog);
 
         if (audio) audio.playSound('dog');
+    }
 
-        // Dog chase logic — iteratively chase nearest sheep
-        this._dogChaseInterval = setInterval(() => {
-            if (!this.dog || this.sheep.length === 0) {
-                this._finishDog();
-                return;
+    _updateDog(dt) {
+        if (!this.activeDog || !this.dog) return;
+
+        this.dogAge += dt;
+        if (this.dogAge >= this.dogDuration || this.sheep.length === 0) {
+            this._finishDog();
+            return;
+        }
+
+        // Find nearest sheep
+        let nearest = null;
+        let minDist = Infinity;
+        this.sheep.forEach(s => {
+            const d = Math.sqrt(
+                (this.dog.position.x - s.model.position.x) ** 2 +
+                (this.dog.position.z - s.model.position.z) ** 2
+            );
+            if (d < minDist) {
+                minDist = d;
+                nearest = s;
             }
+        });
 
-            // Find nearest sheep
-            let nearest = null;
-            let minDist = Infinity;
-            this.sheep.forEach(s => {
-                const d = Math.sqrt(
-                    (this.dog.position.x - s.model.position.x) ** 2 +
-                    (this.dog.position.z - s.model.position.z) ** 2
-                );
-                if (d < minDist) {
-                    minDist = d;
-                    nearest = s;
-                }
-            });
+        if (!nearest) return;
 
-            if (nearest && minDist < 2) {
-                // Remove sheep
-                this.scene.remove(nearest.model);
-                const idx = this.sheep.indexOf(nearest);
-                if (idx >= 0) this.sheep.splice(idx, 1);
-            } else if (nearest) {
-                // Move toward sheep
-                const tdx = nearest.model.position.x - this.dog.position.x;
-                const tdz = nearest.model.position.z - this.dog.position.z;
-                const tDist = Math.sqrt(tdx * tdx + tdz * tdz) || 1;
-                const speed = 8;
-                this.dog.position.x += (tdx / tDist) * speed * 0.05;
-                this.dog.position.z += (tdz / tDist) * speed * 0.05;
-                this.dog.rotation.y = Math.atan2(tdx, tdz);
-            }
-        }, 50);
+        if (minDist < this.dogEatRadius) {
+            this.scene.remove(nearest.model);
+            const idx = this.sheep.indexOf(nearest);
+            if (idx >= 0) this.sheep.splice(idx, 1);
+            return;
+        }
 
-        // Auto-remove dog after 15s
-        setTimeout(() => this._finishDog(), 15000);
+        // Move toward sheep in frame-time space
+        const tdx = nearest.model.position.x - this.dog.position.x;
+        const tdz = nearest.model.position.z - this.dog.position.z;
+        const tDist = Math.sqrt(tdx * tdx + tdz * tdz) || 1;
+        this.dog.position.x += (tdx / tDist) * this.dogSpeed * dt;
+        this.dog.position.z += (tdz / tDist) * this.dogSpeed * dt;
+        this.dog.rotation.y = Math.atan2(tdx, tdz);
     }
 
     _finishDog() {
-        if (this._dogChaseInterval) {
-            clearInterval(this._dogChaseInterval);
-            this._dogChaseInterval = null;
-        }
         if (this.dog) {
             this.scene.remove(this.dog);
             this.dog = null;
         }
         this.activeDog = false;
+        this.dogAge = 0;
     }
 }

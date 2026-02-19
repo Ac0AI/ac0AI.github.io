@@ -1,0 +1,7 @@
+assets/models/raw/*
+!assets/models/raw/.gitkeep
+
+assets/models/game/*.inspect.txt
+assets/models/extracted/
+assets/models/unity_source/
+.DS_Store

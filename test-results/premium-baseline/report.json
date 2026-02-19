@@ -1,0 +1,13 @@
+{
+  "date": "2026-02-19T19:58:26.894Z",
+  "fps": 2.5939819618515965,
+  "invalidMeshCount": 0,
+  "consoleErrors": [],
+  "checks": {
+    "startButtonWorks": true,
+    "leaderboardLoads": true,
+    "pickupDropFlow": true,
+    "gameplay120s": true,
+    "gameOverVisible": true
+  }
+}

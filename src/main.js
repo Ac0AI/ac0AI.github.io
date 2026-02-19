@@ -5,6 +5,7 @@ import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/
 import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/shaders/FXAAShader.js';
+import { POSTFX_PRESETS, VISUAL_PROFILE } from './visual-profile.js';
 
 // ============================================================
 // MAIN ENTRY POINT — Three.js scene setup + game loop
@@ -12,15 +13,28 @@ import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/
 
 // Scene
 const scene = new THREE.Scene();
+const postfx = POSTFX_PRESETS[VISUAL_PROFILE] || POSTFX_PRESETS.premium_arcade_v2;
+
+// Quality profile (performance-safe for laptop browsers)
+const lowMemoryDevice = typeof navigator !== 'undefined' && typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 8;
+const lowCpuDevice = typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number' && navigator.hardwareConcurrency <= 8;
+const lowPowerMode = lowMemoryDevice || lowCpuDevice;
+const quality = {
+    lowPower: lowPowerMode,
+    maxPixelRatio: lowPowerMode ? 1.25 : 1.65,
+    shadowMapSize: lowPowerMode ? 1024 : 1536,
+    particleCount: lowPowerMode ? 84 : 120,
+};
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+let activePixelRatio = Math.min(window.devicePixelRatio, quality.maxPixelRatio);
+renderer.setPixelRatio(activePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.shadowMap.type = quality.lowPower ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.16;
+renderer.toneMappingExposure = postfx.toneMappingExposure;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('game-container').appendChild(renderer.domElement);
 
@@ -29,7 +43,7 @@ const vignette = document.createElement('div');
 vignette.style.cssText = `
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 1;
-    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+    background: radial-gradient(ellipse at center, transparent ${postfx.vignette.innerStopPct}%, rgba(0,0,0,${postfx.vignette.outerAlpha}) 100%);
 `;
 document.getElementById('game-container').appendChild(vignette);
 
@@ -50,7 +64,11 @@ camera.lookAt(0, 0, 0);
 camera.updateProjectionMatrix();
 
 // Game
-const game = new Game(scene, camera);
+const game = new Game(scene, camera, quality);
+if (typeof window !== 'undefined') {
+    window.__game = game;
+    window.__scene = scene;
+}
 
 // Post-processing for a richer arcade look
 const composer = new EffectComposer(renderer);
@@ -58,22 +76,34 @@ composer.addPass(new RenderPass(scene, camera));
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.48,
-    0.72,
-    0.22
+    quality.lowPower ? postfx.bloom.strength.lowPower : postfx.bloom.strength.normal,
+    quality.lowPower ? postfx.bloom.radius.lowPower : postfx.bloom.radius.normal,
+    quality.lowPower ? postfx.bloom.threshold.lowPower : postfx.bloom.threshold.normal
 );
 composer.addPass(bloomPass);
 
 const fxaaPass = new ShaderPass(FXAAShader);
-const pixelRatio = renderer.getPixelRatio();
 fxaaPass.material.uniforms.resolution.value.set(
-    1 / (window.innerWidth * pixelRatio),
-    1 / (window.innerHeight * pixelRatio)
+    1 / (window.innerWidth * activePixelRatio),
+    1 / (window.innerHeight * activePixelRatio)
 );
 composer.addPass(fxaaPass);
 
 // Animation loop
 let lastTime = 0;
+let perfAcc = 0;
+let perfFrames = 0;
+let degradedQuality = false;
+
+function updatePostProcessSize(width, height) {
+    renderer.setSize(width, height);
+    composer.setSize(width, height);
+    bloomPass.setSize(width, height);
+    fxaaPass.material.uniforms.resolution.value.set(
+        1 / (width * activePixelRatio),
+        1 / (height * activePixelRatio)
+    );
+}
 
 function animate(time) {
     requestAnimationFrame(animate);
@@ -83,6 +113,24 @@ function animate(time) {
 
     game.update(dt);
     composer.render();
+
+    // One-step adaptive fallback for sustained heavy load
+    if (!degradedQuality) {
+        perfAcc += dt;
+        perfFrames += 1;
+        if (perfAcc >= postfx.adaptive.sampleWindowSec) {
+            const fps = perfFrames / perfAcc;
+            if (fps < postfx.adaptive.fpsThreshold) {
+                degradedQuality = true;
+                activePixelRatio = Math.max(1, activePixelRatio - postfx.adaptive.pixelRatioStep);
+                renderer.setPixelRatio(activePixelRatio);
+                bloomPass.strength *= postfx.adaptive.bloomDegradeScale;
+                updatePostProcessSize(window.innerWidth, window.innerHeight);
+            }
+            perfAcc = 0;
+            perfFrames = 0;
+        }
+    }
 }
 
 requestAnimationFrame(animate);
@@ -99,13 +147,5 @@ window.addEventListener('resize', () => {
     camera.bottom = frustumSize / -2;
     camera.updateProjectionMatrix();
 
-    renderer.setSize(w, h);
-    composer.setSize(w, h);
-    bloomPass.setSize(w, h);
-
-    const pr = renderer.getPixelRatio();
-    fxaaPass.material.uniforms.resolution.value.set(
-        1 / (w * pr),
-        1 / (h * pr)
-    );
+    updatePostProcessSize(w, h);
 });

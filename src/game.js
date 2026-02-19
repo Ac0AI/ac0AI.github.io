@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-import { createPlayer, createFurniture } from './models.js';
+import {
+    createPlayer,
+    createTruck,
+    createHouse,
+    createFurniture,
+    EXTERNAL_FURNITURE_ENABLED
+} from './models.js';
 import { World } from './world.js';
 import { InputHandler } from './input.js';
 import { AudioManager } from './audio.js';
@@ -7,6 +13,8 @@ import { UIManager } from './ui.js';
 import { Effects } from './effects.js';
 import { EnemyManager } from './enemies.js';
 import { PowerUpManager } from './powerups.js';
+import { externalModelCatalog } from './external-model-catalog.js';
+import { PLAYER_MOTION_PRESETS, VISUAL_PROFILE } from './visual-profile.js';
 
 // ============================================================
 // GAME — core orchestrator
@@ -22,16 +30,19 @@ const POINT_VALUES = {
 };
 
 const FURNITURE_TYPES = [
-    'sofa', 'box', 'box', 'box', 'box',
-    'tv', 'lamp', 'plant', 'bookshelf', 'chair',
+    'sofa', 'tv', 'lamp', 'plant', 'bookshelf', 'chair',
     'fridge', 'console', 'freezer', 'cd', 'radio', 'guitar', 'clock', 'washer',
-    'table', 'mirror', 'rug', 'piano', 'microwave', 'vase'
+    'table', 'mirror', 'rug', 'piano', 'microwave', 'vase', 'box'
 ];
+const PROCEDURAL_FURNITURE_SCALE = 1.3;
+const PROCEDURAL_CARRY_SCALE_MULT = 1.5 / PROCEDURAL_FURNITURE_SCALE;
+const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;
 
 export class Game {
-    constructor(scene, camera) {
+    constructor(scene, camera, quality = {}) {
         this.scene = scene;
         this.camera = camera;
+        this.quality = quality;
 
         // State
         this.state = 'MENU'; // MENU, PLAYING, LEVEL_TRANSITION, GAME_OVER, VICTORY
@@ -46,7 +57,7 @@ export class Game {
         this.endlessElapsed = 0;
 
         // Modules
-        this.world = new World(scene);
+        this.world = new World(scene, quality);
         this.input = new InputHandler();
         this.audio = new AudioManager();
         this.ui = new UIManager();
@@ -58,9 +69,21 @@ export class Game {
         this.playerModel = null;
         this.playerPos = new THREE.Vector3(0, 0, 0);
         this.playerSpeed = 10;
+        this.playerKeyLight = null;
+        this.playerRimLight = null;
+        this.playerShadowBlob = null;
+        this._playerAnimTime = 0;
+        this._playerAnim = {
+            state: 'idle',
+            walkBlend: 0,
+            carryBlend: 0,
+            idleBlend: 1,
+            pickupImpulse: 0,
+            dropImpulse: 0,
+        };
 
         // Furniture
-        this.furnitureItems = []; // { model, type, isGold }
+        this.furnitureItems = []; // { model, type, isGold, baseScale }
         this.carriedItem = null;
 
         // Timers
@@ -69,30 +92,61 @@ export class Game {
         this._powerUpSpawnAcc = 0;
         this._dogSpawnAcc = 0;
         this._difficultyAcc = 0;
+        this._externalUpgradeQueued = false;
+        this._externalUpgradeApplied = false;
+        this._furnitureUpgradeTimer = null;
+        this._furnitureUpgradeAttemptsLeft = 0;
+        this._timeouts = new Set();
 
         // Setup
         this._setup();
     }
 
     _setup() {
-        // Build world
-        this.world.create(1);
-
-        // Create player
-        this.playerModel = createPlayer();
-        this.playerModel.position.set(0, 0, 0);
-        this.scene.add(this.playerModel);
-
         // UI callbacks
         this.ui.onStart = () => this.startGame();
         this.ui.onRestart = () => this.restartGame();
         this.ui.onNextLevel = () => this.nextLevel();
 
+        try {
+            // Build world
+            this.world.create(1);
+
+            // Create player
+            this.playerModel = createPlayer();
+            this.playerModel.position.set(0, 0, 0);
+            this.scene.add(this.playerModel);
+            this._resetPlayerAnimationState();
+            this._createPlayerPresentation();
+        } catch (err) {
+            console.error('Game setup failed, keeping menu interactive:', err);
+        }
+
         // Show start screen
         this.ui.showStartScreen();
+
+        // Swap in imported Unity models as soon as catalog finishes loading.
+        this._queueExternalModelUpgrade();
     }
 
     startGame() {
+        this._clearManagedTimeouts();
+
+        if (!this.playerModel || !this.world.truckModel || !this.world.houseModel) {
+            try {
+                this._clearAll();
+                this.world.create(1);
+                this.playerModel = createPlayer();
+                this.playerModel.position.set(0, 0, 0);
+                this.scene.add(this.playerModel);
+                this._resetPlayerAnimationState();
+                this._createPlayerPresentation();
+            } catch (err) {
+                console.error('Failed to recover world on start:', err);
+                return;
+            }
+        }
+
         this.state = 'PLAYING';
         this.score = 0;
         this.timeLeft = 75;
@@ -110,10 +164,11 @@ export class Game {
         this.playerPos.set(0, 0, 0);
         this.playerModel.position.set(0, 0, 0);
         this.carriedItem = null;
+        this._resetPlayerAnimationState();
 
         // Grace period
         this.hasGracePeriod = true;
-        setTimeout(() => { this.hasGracePeriod = false; }, 3000);
+        this._setManagedTimeout(() => { this.hasGracePeriod = false; }, 3000);
 
         // Reset timers
         this._timerAcc = 0;
@@ -144,14 +199,73 @@ export class Game {
     }
 
     _clearAll() {
+        this._clearManagedTimeouts();
+        if (this._furnitureUpgradeTimer) {
+            clearInterval(this._furnitureUpgradeTimer);
+            this._furnitureUpgradeTimer = null;
+        }
         this.enemies.clearAll();
         this.powerups.clearAll();
         this._clearFurniture();
+        if (this.playerShadowBlob) {
+            this.playerShadowBlob.geometry.dispose();
+            this.playerShadowBlob.material.dispose();
+            this.playerShadowBlob = null;
+        }
 
         // Remove world objects
         // Simply clear the scene of everything except camera
         while (this.scene.children.length > 0) {
             this.scene.remove(this.scene.children[0]);
+        }
+    }
+
+    _createPlayerPresentation() {
+        this.playerKeyLight = new THREE.PointLight(0xfff0d8, this.quality.lowPower ? 0.48 : 0.58, 7.8, 2);
+        this.playerKeyLight.castShadow = false;
+        this.playerKeyLight.position.set(0, 2.2, 0.8);
+        this.scene.add(this.playerKeyLight);
+
+        this.playerRimLight = new THREE.PointLight(0x8fd6ff, this.quality.lowPower ? 0.28 : 0.36, 6.2, 2);
+        this.playerRimLight.castShadow = false;
+        this.playerRimLight.position.set(-0.8, 1.7, -0.8);
+        this.scene.add(this.playerRimLight);
+
+        const shadowGeo = new THREE.CircleGeometry(0.6, 22);
+        const shadowMat = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false
+        });
+        this.playerShadowBlob = new THREE.Mesh(shadowGeo, shadowMat);
+        this.playerShadowBlob.rotation.x = -Math.PI / 2;
+        this.playerShadowBlob.position.set(0, 0.03, 0);
+        this.scene.add(this.playerShadowBlob);
+    }
+
+    _resetPlayerAnimationState() {
+        this._playerAnimTime = 0;
+        this._playerAnim.state = 'idle';
+        this._playerAnim.walkBlend = 0;
+        this._playerAnim.carryBlend = 0;
+        this._playerAnim.idleBlend = 1;
+        this._playerAnim.pickupImpulse = 0;
+        this._playerAnim.dropImpulse = 0;
+        const rig = this.playerModel?.userData?.animRig;
+        if (!rig) return;
+        [rig.armL, rig.armR, rig.legL, rig.legR, rig.head].forEach((part) => {
+            if (!part) return;
+            part.rotation.set(0, 0, 0);
+            part.position.y = part.userData?.baseY ?? part.position.y;
+        });
+    }
+
+    _pulsePlayerAction(type) {
+        if (type === 'pickup') {
+            this._playerAnim.pickupImpulse = 1;
+        } else if (type === 'drop') {
+            this._playerAnim.dropImpulse = 1;
         }
     }
 
@@ -164,15 +278,43 @@ export class Game {
         }
     }
 
+    _setManagedTimeout(fn, delayMs) {
+        const id = setTimeout(() => {
+            this._timeouts.delete(id);
+            fn();
+        }, delayMs);
+        this._timeouts.add(id);
+        return id;
+    }
+
+    _clearManagedTimeouts() {
+        this._timeouts.forEach(id => clearTimeout(id));
+        this._timeouts.clear();
+        this.hasGracePeriod = false;
+    }
+
     _spawnFurniture(count = 1) {
         for (let i = 0; i < count; i++) {
             this._spawnOneFurniture();
         }
     }
 
+    _applyGoldTint(model) {
+        model.traverse(child => {
+            if (child.isMesh) {
+                child.material = child.material.clone();
+                child.material.emissive = new THREE.Color(0xFFD700);
+                child.material.emissiveIntensity = 0.3;
+            }
+        });
+    }
+
     _spawnOneFurniture() {
         const type = FURNITURE_TYPES[Math.floor(Math.random() * FURNITURE_TYPES.length)];
         const model = createFurniture(type);
+        if (EXTERNAL_FURNITURE_ENABLED && externalModelCatalog.ready && !model?.userData?.externalModel) {
+            this._scheduleFurnitureUpgradeRetries();
+        }
 
         // Spawn in a ring around truck (outside truck collision radius)
         const truckPos = this.world.truckPos;
@@ -181,24 +323,24 @@ export class Game {
         const rx = truckPos.x + Math.cos(angle) * dist;
         const rz = truckPos.z + Math.sin(angle) * dist;
         model.position.set(rx, 0, rz);
-        model.scale.set(1.3, 1.3, 1.3);  // Slightly larger for visibility
+        if (!model?.userData?.externalModel) {
+            model.scale.set(PROCEDURAL_FURNITURE_SCALE, PROCEDURAL_FURNITURE_SCALE, PROCEDURAL_FURNITURE_SCALE);  // Slightly larger for visibility
+        }
         this.scene.add(model);
 
         const isGold = Math.random() < 0.1;
-        const item = { model, type, isGold };
+        const item = {
+            model,
+            type,
+            isGold,
+            baseScale: model?.userData?.externalModel ? null : model.scale.clone(),
+        };
 
         if (isGold) {
-            // Tint gold
-            model.traverse(child => {
-                if (child.isMesh) {
-                    child.material = child.material.clone();
-                    child.material.emissive = new THREE.Color(0xFFD700);
-                    child.material.emissiveIntensity = 0.3;
-                }
-            });
+            this._applyGoldTint(model);
 
             // Auto-remove gold after 8s if not picked up, spawn replacement
-            setTimeout(() => {
+            this._setManagedTimeout(() => {
                 if (this.furnitureItems.includes(item) && this.carriedItem !== item) {
                     this.scene.remove(model);
                     const idx = this.furnitureItems.indexOf(item);
@@ -210,6 +352,108 @@ export class Game {
         }
 
         this.furnitureItems.push(item);
+    }
+
+    _queueExternalModelUpgrade() {
+        if (this._externalUpgradeQueued || this._externalUpgradeApplied) return;
+        this._externalUpgradeQueued = true;
+        externalModelCatalog.whenReady().then(() => {
+            this._externalUpgradeQueued = false;
+            this._applyExternalModelUpgrade();
+        });
+    }
+
+    _replaceWorldModel(key, factory, fallbackPosition, fallbackRotationY) {
+        const next = factory();
+        if (!next?.userData?.externalModel) return false;
+
+        const current = this.world[key];
+        const pos = current ? current.position.clone() : fallbackPosition.clone();
+        const rotY = current ? current.rotation.y : fallbackRotationY;
+
+        if (current) this.scene.remove(current);
+        this.world[key] = next;
+        this.world[key].position.copy(pos);
+        this.world[key].rotation.y = rotY;
+        this.scene.add(this.world[key]);
+        return true;
+    }
+
+    _upgradeExistingFurnitureModels() {
+        if (!EXTERNAL_FURNITURE_ENABLED) return false;
+        if (this.furnitureItems.length === 0) return false;
+
+        let anyReplaced = false;
+        this.furnitureItems.forEach((item) => {
+            const next = createFurniture(item.type);
+            if (!next?.userData?.externalModel) return;
+
+            next.position.copy(item.model.position);
+            next.rotation.copy(item.model.rotation);
+            this.scene.remove(item.model);
+            this.scene.add(next);
+            item.model = next;
+            item.baseScale = null;
+            if (item.isGold) this._applyGoldTint(item.model);
+            anyReplaced = true;
+        });
+
+        if (this.carriedItem) {
+            this.carriedItem.model.position.x = this.playerPos.x;
+            this.carriedItem.model.position.z = this.playerPos.z;
+            this.carriedItem.model.position.y = 1.8 + this.effects.getCarryOffset();
+        }
+
+        return anyReplaced;
+    }
+
+    _scheduleFurnitureUpgradeRetries(maxAttempts = 10) {
+        this._furnitureUpgradeAttemptsLeft = Math.max(this._furnitureUpgradeAttemptsLeft, maxAttempts);
+        if (this._furnitureUpgradeTimer) return;
+
+        this._furnitureUpgradeTimer = setInterval(() => {
+            if (this._furnitureUpgradeAttemptsLeft <= 0 || !externalModelCatalog.ready) {
+                clearInterval(this._furnitureUpgradeTimer);
+                this._furnitureUpgradeTimer = null;
+                return;
+            }
+            this._furnitureUpgradeAttemptsLeft--;
+            this._upgradeExistingFurnitureModels();
+
+            const pendingFallbacks = this.furnitureItems.some(item => !item.model?.userData?.externalModel);
+            if (!pendingFallbacks) {
+                clearInterval(this._furnitureUpgradeTimer);
+                this._furnitureUpgradeTimer = null;
+            }
+        }, 800);
+    }
+
+    _applyExternalModelUpgrade() {
+        if (this._externalUpgradeApplied || !externalModelCatalog.ready) return;
+
+        let changed = false;
+
+        const nextPlayer = createPlayer();
+        if (nextPlayer?.userData?.externalModel && this.playerModel) {
+            nextPlayer.position.copy(this.playerModel.position);
+            nextPlayer.rotation.copy(this.playerModel.rotation);
+            this.scene.remove(this.playerModel);
+            this.playerModel = nextPlayer;
+            this.scene.add(this.playerModel);
+            this._resetPlayerAnimationState();
+            changed = true;
+        }
+
+        changed = this._replaceWorldModel('truckModel', createTruck, this.world.truckPos, Math.PI / 4) || changed;
+        changed = this._replaceWorldModel('houseModel', createHouse, this.world.housePos, -Math.PI / 6) || changed;
+        if (EXTERNAL_FURNITURE_ENABLED) {
+            changed = this._upgradeExistingFurnitureModels() || changed;
+            this._scheduleFurnitureUpgradeRetries(12);
+        }
+
+        if (changed) {
+            this._externalUpgradeApplied = true;
+        }
     }
 
     // ============================================================
@@ -301,7 +545,8 @@ export class Game {
 
         // ---- Effects ----
         this.effects.update(dt);
-        this.effects.applyWalkBob(this.playerModel, this.input.isMoving);
+        this.effects.applyWalkBob(this.playerModel, this.input.isMoving, !!this.carriedItem);
+        this._animatePlayerMotion(dt);
 
         // ---- Ambient particles ----
         this.world.updateParticles(dt);
@@ -356,6 +601,17 @@ export class Game {
         this.playerModel.position.x = this.playerPos.x;
         this.playerModel.position.z = this.playerPos.z;
 
+        if (this.playerShadowBlob) {
+            this.playerShadowBlob.position.x = this.playerPos.x;
+            this.playerShadowBlob.position.z = this.playerPos.z;
+        }
+        if (this.playerKeyLight) {
+            this.playerKeyLight.position.set(this.playerPos.x + 0.1, 2.15, this.playerPos.z + 0.85);
+        }
+        if (this.playerRimLight) {
+            this.playerRimLight.position.set(this.playerPos.x - 0.95, 1.65, this.playerPos.z - 0.9);
+        }
+
         // Face direction
         if (Math.abs(worldDx) > 0.1 || Math.abs(worldDz) > 0.1) {
             this.playerModel.rotation.y = Math.atan2(worldDx, worldDz);
@@ -366,6 +622,61 @@ export class Game {
             this.carriedItem.model.position.x = this.playerPos.x;
             this.carriedItem.model.position.z = this.playerPos.z;
             this.carriedItem.model.position.y = 1.8 + this.effects.getCarryOffset();
+        }
+    }
+
+    _animatePlayerMotion(dt) {
+        const rig = this.playerModel?.userData?.animRig;
+        if (!rig) return;
+
+        const moving = this.input.isMoving;
+        const carrying = !!this.carriedItem;
+        const nextState = moving ? (carrying ? 'carryWalk' : 'walk') : 'idle';
+        this._playerAnim.state = nextState;
+
+        const blendFactor = Math.min(1, dt * PLAYER_MOTION.blendSpeed);
+        const targetWalk = nextState === 'walk' ? 1 : 0;
+        const targetCarry = nextState === 'carryWalk' ? 1 : 0;
+        const targetIdle = nextState === 'idle' ? 1 : 0;
+
+        this._playerAnim.walkBlend = THREE.MathUtils.lerp(this._playerAnim.walkBlend, targetWalk, blendFactor);
+        this._playerAnim.carryBlend = THREE.MathUtils.lerp(this._playerAnim.carryBlend, targetCarry, blendFactor);
+        this._playerAnim.idleBlend = THREE.MathUtils.lerp(this._playerAnim.idleBlend, targetIdle, blendFactor);
+
+        this._playerAnim.pickupImpulse = Math.max(0, this._playerAnim.pickupImpulse - dt * PLAYER_MOTION.pickupKickDecay);
+        this._playerAnim.dropImpulse = Math.max(0, this._playerAnim.dropImpulse - dt * PLAYER_MOTION.dropSettleDecay);
+
+        const gaitSpeed = moving ? (carrying ? 7.4 : 9.2) : 3.2;
+        this._playerAnimTime += dt * gaitSpeed;
+        const gaitSin = Math.sin(this._playerAnimTime);
+        const gaitCos = Math.cos(this._playerAnimTime);
+
+        const walkStride = gaitSin * PLAYER_MOTION.walkStride * this._playerAnim.walkBlend;
+        const carryStride = gaitSin * PLAYER_MOTION.carryStride * this._playerAnim.carryBlend;
+        const legStride = walkStride + carryStride;
+        const armSwingAmp = (PLAYER_MOTION.walkArmSwing * this._playerAnim.walkBlend)
+            + (PLAYER_MOTION.carryArmSwing * this._playerAnim.carryBlend);
+        const carryLift = PLAYER_MOTION.carryArmLift * this._playerAnim.carryBlend;
+        const pickupKick = Math.sin((1 - this._playerAnim.pickupImpulse) * Math.PI) * this._playerAnim.pickupImpulse;
+        const dropSettle = Math.sin((1 - this._playerAnim.dropImpulse) * Math.PI) * this._playerAnim.dropImpulse;
+
+        rig.legL.rotation.x = legStride;
+        rig.legR.rotation.x = -legStride;
+
+        rig.armL.rotation.x = -gaitSin * armSwingAmp - carryLift + pickupKick * 0.26 - dropSettle * 0.14;
+        rig.armR.rotation.x = gaitSin * armSwingAmp - carryLift - pickupKick * 0.12 + dropSettle * 0.16;
+        rig.armL.rotation.z = -PLAYER_MOTION.bodyLean * (this._playerAnim.walkBlend * 0.45 + this._playerAnim.carryBlend * 0.2);
+        rig.armR.rotation.z = PLAYER_MOTION.bodyLean * (this._playerAnim.walkBlend * 0.45 + this._playerAnim.carryBlend * 0.2);
+
+        const breath = Math.sin(this._playerAnimTime * 0.8) * PLAYER_MOTION.idleBreath * this._playerAnim.idleBlend;
+        rig.head.rotation.x = (gaitCos * PLAYER_MOTION.headNod * (this._playerAnim.walkBlend + this._playerAnim.carryBlend * 0.5))
+            + breath
+            + pickupKick * 0.1
+            - dropSettle * 0.12;
+
+        if (this.playerShadowBlob?.material) {
+            const motionBlend = Math.max(this._playerAnim.walkBlend, this._playerAnim.carryBlend);
+            this.playerShadowBlob.material.opacity = 0.18 + motionBlend * 0.06 + dropSettle * 0.04;
         }
     }
 
@@ -409,6 +720,7 @@ export class Game {
                 const idx = this.furnitureItems.indexOf(this.carriedItem);
                 if (idx >= 0) this.furnitureItems.splice(idx, 1);
                 this.carriedItem = null;
+                this._pulsePlayerAction('drop');
 
                 // Check level completion
                 if (this.currentLevel < this.maxLevel && this.itemsDelivered >= this.levelGoal) {
@@ -420,12 +732,19 @@ export class Game {
                 // Drop on ground — it will slide back to truck area after 10s
                 this.audio.playSynth('drop');
                 this.carriedItem.model.position.y = 0;
-                this.carriedItem.model.scale.set(1, 1, 1);
+                if (this.carriedItem.model?.userData?.externalModel) {
+                    // External Unity assets can break if their scale is reassigned at runtime.
+                } else if (this.carriedItem.baseScale) {
+                    this.carriedItem.model.scale.copy(this.carriedItem.baseScale);
+                } else {
+                    this.carriedItem.model.scale.set(1, 1, 1);
+                }
                 const droppedItem = this.carriedItem;
                 this.carriedItem = null;
+                this._pulsePlayerAction('drop');
 
                 // Auto-recall dropped items back to truck zone after 10s
-                setTimeout(() => {
+                this._setManagedTimeout(() => {
                     if (this.furnitureItems.includes(droppedItem) && this.carriedItem !== droppedItem) {
                         const truckPos = this.world.truckPos;
                         droppedItem.model.position.set(
@@ -454,8 +773,19 @@ export class Game {
 
             if (closest) {
                 this.carriedItem = closest;
-                this.carriedItem.model.scale.set(1.5, 1.5, 1.5);
+                if (this.carriedItem.model?.userData?.externalModel) {
+                    // Keep original scale untouched for imported assets.
+                } else if (this.carriedItem.baseScale) {
+                    this.carriedItem.model.scale.set(
+                        this.carriedItem.baseScale.x * PROCEDURAL_CARRY_SCALE_MULT,
+                        this.carriedItem.baseScale.y * PROCEDURAL_CARRY_SCALE_MULT,
+                        this.carriedItem.baseScale.z * PROCEDURAL_CARRY_SCALE_MULT
+                    );
+                } else {
+                    this.carriedItem.model.scale.set(1.5, 1.5, 1.5);
+                }
                 this.audio.playSynth('pickup');
+                this._pulsePlayerAction('pickup');
             }
         }
     }
@@ -517,6 +847,7 @@ export class Game {
     }
 
     nextLevel() {
+        this._clearManagedTimeouts();
         this.currentLevel++;
         this.itemsDelivered = 0;
         this.timeLeft = 55;
@@ -529,10 +860,11 @@ export class Game {
         // Clear and respawn furniture for new level
         this._clearFurniture();
         this._spawnFurniture(5);
+        this._resetPlayerAnimationState();
 
         // Grace period
         this.hasGracePeriod = true;
-        setTimeout(() => { this.hasGracePeriod = false; }, 3000);
+        this._setManagedTimeout(() => { this.hasGracePeriod = false; }, 3000);
 
         // Switch environment
         this.world.switchLevel(this.currentLevel);

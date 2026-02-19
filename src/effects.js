@@ -14,6 +14,7 @@ export class Effects {
 
         // Carried item bobbing
         this._bobPhase = 0;
+        this._walkLift = 0;
     }
 
     shake(duration = 300, intensity = 0.3) {
@@ -40,15 +41,14 @@ export class Effects {
         this._bobPhase += dt * 8;
     }
 
-    // Walk bobbing for player
-    applyWalkBob(playerModel, isMoving) {
-        if (isMoving) {
-            playerModel.position.y = Math.abs(Math.sin(this._bobPhase)) * 0.15;
-            playerModel.rotation.z = Math.sin(this._bobPhase * 0.5) * 0.08;
-        } else {
-            playerModel.position.y = 0;
-            playerModel.rotation.z = 0;
-        }
+    // Walk bobbing for player root only (limb swing is handled in game animation rig).
+    applyWalkBob(playerModel, isMoving, isCarrying = false) {
+        const targetLift = isMoving
+            ? Math.abs(Math.sin(this._bobPhase)) * (isCarrying ? 0.1 : 0.14)
+            : 0;
+        this._walkLift = THREE.MathUtils.lerp(this._walkLift, targetLift, 0.22);
+        playerModel.position.y = this._walkLift;
+        return this._walkLift;
     }
 
     // Carried item bobbing

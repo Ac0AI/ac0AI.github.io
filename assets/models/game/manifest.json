@@ -1,0 +1,457 @@
+{
+  "models": [
+    {
+      "id": "u_body_body_010_",
+      "file": "assets/models/game/u_body_body_010_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "character"
+      ]
+    },
+    {
+      "id": "u_body_body_010_static",
+      "file": "assets/models/game/u_body_body_010_static.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "character"
+      ]
+    },
+    {
+      "id": "u_building_eco_building_terrace_",
+      "file": "assets/models/game/u_building_eco_building_terrace_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "building",
+        "environment"
+      ]
+    },
+    {
+      "id": "u_dog_dog_001_",
+      "file": "assets/models/game/u_dog_dog_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "character",
+        "animal"
+      ]
+    },
+    {
+      "id": "u_dog_dog_001_static",
+      "file": "assets/models/game/u_dog_dog_001_static.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "character",
+        "animal"
+      ]
+    },
+    {
+      "id": "u_furniture_air_hockey_001_",
+      "file": "assets/models/game/u_furniture_air_hockey_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_bathroom_item_001_",
+      "file": "assets/models/game/u_furniture_bathroom_item_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_bed_001_",
+      "file": "assets/models/game/u_furniture_bed_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_box_001_",
+      "file": "assets/models/game/u_furniture_box_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_camera_001_",
+      "file": "assets/models/game/u_furniture_camera_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_closet_001_",
+      "file": "assets/models/game/u_furniture_closet_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_closet_002_",
+      "file": "assets/models/game/u_furniture_closet_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_clothes_001_",
+      "file": "assets/models/game/u_furniture_clothes_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_clothes_002_",
+      "file": "assets/models/game/u_furniture_clothes_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_coffee_machine_001_",
+      "file": "assets/models/game/u_furniture_coffee_machine_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_coffee_table_001_",
+      "file": "assets/models/game/u_furniture_coffee_table_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_dish_001_",
+      "file": "assets/models/game/u_furniture_dish_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_dish_002_",
+      "file": "assets/models/game/u_furniture_dish_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_door_001_",
+      "file": "assets/models/game/u_furniture_door_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_door_frame_001_",
+      "file": "assets/models/game/u_furniture_door_frame_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_dresser_001_",
+      "file": "assets/models/game/u_furniture_dresser_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_drink_001_",
+      "file": "assets/models/game/u_furniture_drink_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_drink_002_",
+      "file": "assets/models/game/u_furniture_drink_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_dumbbell_001_",
+      "file": "assets/models/game/u_furniture_dumbbell_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_dumbbell_002_",
+      "file": "assets/models/game/u_furniture_dumbbell_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_flower_001_",
+      "file": "assets/models/game/u_furniture_flower_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_fridge_001_",
+      "file": "assets/models/game/u_furniture_fridge_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_ketchup_001_",
+      "file": "assets/models/game/u_furniture_ketchup_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_kitchen_chair_001_",
+      "file": "assets/models/game/u_furniture_kitchen_chair_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_kitchen_sink_001_",
+      "file": "assets/models/game/u_furniture_kitchen_sink_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_kitchen_table_001_",
+      "file": "assets/models/game/u_furniture_kitchen_table_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_lamp_001_",
+      "file": "assets/models/game/u_furniture_lamp_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_lamp_002_",
+      "file": "assets/models/game/u_furniture_lamp_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_lounge_chair_001_",
+      "file": "assets/models/game/u_furniture_lounge_chair_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_microwave_oven_001_",
+      "file": "assets/models/game/u_furniture_microwave_oven_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_musical_instrument_001_",
+      "file": "assets/models/game/u_furniture_musical_instrument_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_office_table_001_",
+      "file": "assets/models/game/u_furniture_office_table_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_scratching_post_001_",
+      "file": "assets/models/game/u_furniture_scratching_post_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_sofa_001_",
+      "file": "assets/models/game/u_furniture_sofa_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_toy_001_",
+      "file": "assets/models/game/u_furniture_toy_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_toy_002_",
+      "file": "assets/models/game/u_furniture_toy_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_training_item_001_",
+      "file": "assets/models/game/u_furniture_training_item_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_training_item_002_",
+      "file": "assets/models/game/u_furniture_training_item_002_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_tv_wall_001_",
+      "file": "assets/models/game/u_furniture_tv_wall_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_furniture_washing_machine_001_",
+      "file": "assets/models/game/u_furniture_washing_machine_001_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "u_van_van_",
+      "file": "assets/models/game/u_van_van_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "vehicle"
+      ]
+    },
+    {
+      "id": "u_van_van_wheel_front_left_",
+      "file": "assets/models/game/u_van_van_wheel_front_left_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "vehicle"
+      ]
+    },
+    {
+      "id": "u_van_van_wheel_front_right_",
+      "file": "assets/models/game/u_van_van_wheel_front_right_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "vehicle"
+      ]
+    },
+    {
+      "id": "u_van_van_wheel_rear_left_",
+      "file": "assets/models/game/u_van_van_wheel_rear_left_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "vehicle"
+      ]
+    },
+    {
+      "id": "u_van_van_wheel_rear_right_",
+      "file": "assets/models/game/u_van_van_wheel_rear_right_.glb",
+      "scale": 1,
+      "yOffset": 0,
+      "tags": [
+        "vehicle"
+      ]
+    }
+  ]
+}

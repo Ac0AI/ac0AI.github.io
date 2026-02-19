@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
+import { externalModelCatalog } from './external-model-catalog.js';
+import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
+
+export const EXTERNAL_PLAYER_ENABLED = false;
+export const EXTERNAL_DOG_ENABLED = false;
+export const EXTERNAL_FURNITURE_ENABLED = true;
 
 // ============================================================
 // LOW-POLY PROCEDURAL 3D MODEL FACTORY
@@ -8,6 +14,132 @@ import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 
 // Helper: create a rounded box-ish mesh
 const texturePack = createTexturePack();
+const _tmpBox = new THREE.Box3();
+const _tmpSize = new THREE.Vector3();
+const _tmpCenter = new THREE.Vector3();
+
+function _specForType(type) {
+    return MODEL_VALIDATION_LIMITS.TARGET_DIMENSIONS_PER_TYPE[type]
+        || MODEL_VALIDATION_LIMITS.TARGET_DIMENSIONS_PER_TYPE.default;
+}
+
+function _limitForType(bucket, type, fallback) {
+    const limits = MODEL_VALIDATION_LIMITS[bucket] || {};
+    return limits[type] || limits.default || fallback;
+}
+
+function _prepareExternalModel(root, opts = {}) {
+    if (!root) return null;
+
+    const castShadow = opts.castShadow !== false;
+    const receiveShadow = opts.receiveShadow !== false;
+    const allowSkinned = opts.allowSkinned === true;
+    let hasSkinnedMesh = false;
+    let totalVertices = 0;
+    root.traverse((node) => {
+        if (!node.isMesh) return;
+        if (node.isSkinnedMesh) hasSkinnedMesh = true;
+        const vertCount = node.geometry?.attributes?.position?.count || 0;
+        totalVertices += vertCount;
+        node.castShadow = castShadow && vertCount < 9000;
+        node.receiveShadow = receiveShadow;
+        node.frustumCulled = !node.isSkinnedMesh;
+    });
+
+    if (totalVertices > (opts.maxVertices || 42000)) {
+        return null;
+    }
+
+    // Skinned assets from Unity packages are unstable in this lightweight runtime path.
+    // Fallback to procedural models instead of risking stretched mega-polygons.
+    if (hasSkinnedMesh && !allowSkinned) {
+        return null;
+    }
+
+    root.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(root);
+    _tmpBox.getSize(_tmpSize);
+    _tmpBox.getCenter(_tmpCenter);
+
+    if (
+        !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
+        || _tmpSize.y <= 0.0001 || _tmpSize.x <= 0.0001 || _tmpSize.z <= 0.0001
+    ) {
+        return null;
+    }
+
+    const modelType = opts.validationType || opts.furnitureType || opts.role || 'default';
+    const targetHeight = Math.max(0.05, opts.targetHeight || _tmpSize.y);
+    const maxExtent = Math.max(0.05, opts.maxExtent || Infinity);
+    const currentExtent = Math.max(_tmpSize.x, _tmpSize.z, 0.0001);
+
+    const scaleFromHeight = targetHeight / _tmpSize.y;
+    const scaleFromExtent = maxExtent / currentExtent;
+    const uniformScale = Math.min(scaleFromHeight, scaleFromExtent) * (opts.extraScale || 1);
+    root.scale.multiplyScalar(uniformScale);
+
+    root.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(root);
+    _tmpBox.getSize(_tmpSize);
+    if (
+        !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
+        || _tmpSize.y > 9 || Math.max(_tmpSize.x, _tmpSize.z) > 9
+    ) {
+        return null;
+    }
+    _tmpBox.getCenter(_tmpCenter);
+    root.position.x -= _tmpCenter.x;
+    root.position.z -= _tmpCenter.z;
+    root.position.y -= _tmpBox.min.y;
+    root.position.y += opts.yOffset || 0;
+    root.updateWorldMatrix(true, true);
+
+    const expectedExtent = Number.isFinite(maxExtent)
+        ? Math.max(targetHeight, maxExtent, 0.2)
+        : Math.max(targetHeight, 0.2);
+    const maxAllowedMeshRadius = _limitForType('MAX_WORLD_RADIUS_PER_TYPE', modelType, expectedExtent * 2.8);
+    const maxAllowedMeshOffset = _limitForType('MAX_WORLD_OFFSET_PER_TYPE', modelType, expectedExtent * 3.2);
+    let suspiciousMesh = false;
+    root.traverse((node) => {
+        if (!node.isMesh || !node.geometry || suspiciousMesh) return;
+        if (!node.geometry.boundingSphere) {
+            try { node.geometry.computeBoundingSphere(); } catch (_) {}
+        }
+        const sphere = node.geometry.boundingSphere;
+        if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius <= 0) {
+            suspiciousMesh = true;
+            return;
+        }
+
+        const e = node.matrixWorld?.elements || [];
+        const sx = Math.hypot(e[0] || 0, e[1] || 0, e[2] || 0);
+        const sy = Math.hypot(e[4] || 0, e[5] || 0, e[6] || 0);
+        const sz = Math.hypot(e[8] || 0, e[9] || 0, e[10] || 0);
+        const scaleMax = Math.max(Math.abs(sx), Math.abs(sy), Math.abs(sz), 0.00001);
+        const radiusWorld = sphere.radius * scaleMax;
+        const worldOffset = Math.hypot(e[12] || 0, e[13] || 0, e[14] || 0);
+
+        if (
+            !Number.isFinite(radiusWorld) || !Number.isFinite(worldOffset)
+            || radiusWorld > maxAllowedMeshRadius
+            || worldOffset > maxAllowedMeshOffset
+        ) {
+            suspiciousMesh = true;
+        }
+    });
+    if (suspiciousMesh) {
+        return null;
+    }
+
+    root.userData.externalModel = true;
+    return root;
+}
+
+function _tryCreateExternalRole(role, opts = {}) {
+    if (!externalModelCatalog.ready) return null;
+    const root = externalModelCatalog.cloneRole(role);
+    return root ? _prepareExternalModel(root, { ...opts, validationType: role }) : null;
+}
 
 function buildStandardMaterial(color, defaults, opts = {}) {
     const { surface = 'painted', ...matOpts } = opts;
@@ -49,6 +181,19 @@ function cylinder(rTop, rBot, h, color, segs = 8, opts = {}) {
 // PLAYER — cute mover character
 // ============================================================
 export function createPlayer() {
+    if (EXTERNAL_PLAYER_ENABLED) {
+        const external = _tryCreateExternalRole('player', {
+            targetHeight: 1.95,
+            maxExtent: 1.35,
+            castShadow: true,
+            receiveShadow: true
+        });
+        if (external) {
+            external.userData.type = 'player';
+            return external;
+        }
+    }
+
     const group = new THREE.Group();
 
     // Body (blue overalls)
@@ -56,10 +201,27 @@ export function createPlayer() {
     body.position.y = 0.7;
     group.add(body);
 
+    // Overall bib + buttons
+    const bib = box(0.42, 0.3, 0.06, 0x2e86c1, { surface: 'fabric' });
+    bib.position.set(0, 0.77, 0.25);
+    group.add(bib);
+    const btnL = sphere(0.03, 0xf1c40f, { surface: 'metal' });
+    btnL.position.set(-0.11, 0.82, 0.29);
+    group.add(btnL);
+    const btnR = sphere(0.03, 0xf1c40f, { surface: 'metal' });
+    btnR.position.set(0.11, 0.82, 0.29);
+    group.add(btnR);
+
     // Head (skin color)
     const head = sphere(0.3, 0xffccaa);
     head.position.y = 1.45;
+    head.userData.baseY = head.position.y;
     group.add(head);
+
+    // Nose
+    const nose = sphere(0.035, 0xf7b998);
+    nose.position.set(0, 1.4, 0.29);
+    group.add(nose);
 
     // Cap (dark blue)
     const cap = cylinder(0.32, 0.32, 0.12, 0x2980b9, 12);
@@ -81,25 +243,61 @@ export function createPlayer() {
     eyeR.position.set(0.1, 1.45, 0.25);
     group.add(eyeR);
 
+    // Cheeks
+    const cheekL = sphere(0.04, 0xffb2a3, { surface: 'painted', transparent: true, opacity: 0.75 });
+    cheekL.position.set(-0.16, 1.36, 0.23);
+    group.add(cheekL);
+    const cheekR = sphere(0.04, 0xffb2a3, { surface: 'painted', transparent: true, opacity: 0.75 });
+    cheekR.position.set(0.16, 1.36, 0.23);
+    group.add(cheekR);
+
     // Legs
     const legL = box(0.2, 0.5, 0.2, 0x2c3e50);
     legL.position.set(-0.18, 0.15, 0);
+    legL.userData.baseY = legL.position.y;
     group.add(legL);
 
     const legR = box(0.2, 0.5, 0.2, 0x2c3e50);
     legR.position.set(0.18, 0.15, 0);
+    legR.userData.baseY = legR.position.y;
     group.add(legR);
+
+    // Shoes
+    const shoeL = box(0.24, 0.09, 0.28, 0x111111, { surface: 'stone', roughness: 0.92, metalness: 0.01 });
+    shoeL.position.set(-0.18, 0.03, 0.03);
+    group.add(shoeL);
+    const shoeR = box(0.24, 0.09, 0.28, 0x111111, { surface: 'stone', roughness: 0.92, metalness: 0.01 });
+    shoeR.position.set(0.18, 0.03, 0.03);
+    group.add(shoeR);
 
     // Arms
     const armL = box(0.15, 0.5, 0.15, 0x3498db);
     armL.position.set(-0.5, 0.75, 0);
+    armL.userData.baseY = armL.position.y;
     group.add(armL);
 
     const armR = box(0.15, 0.5, 0.15, 0x3498db);
     armR.position.set(0.5, 0.75, 0);
+    armR.userData.baseY = armR.position.y;
     group.add(armR);
 
+    // Gloves
+    const gloveL = sphere(0.08, 0xffccaa, { surface: 'fabric' });
+    gloveL.position.set(-0.5, 0.5, 0.06);
+    group.add(gloveL);
+    const gloveR = sphere(0.08, 0xffccaa, { surface: 'fabric' });
+    gloveR.position.set(0.5, 0.5, 0.06);
+    group.add(gloveR);
+
     group.userData.type = 'player';
+    group.userData.animRig = {
+        armL,
+        armR,
+        legL,
+        legR,
+        head,
+        blend: 0,
+    };
     return group;
 }
 
@@ -107,6 +305,17 @@ export function createPlayer() {
 // TRUCK — delivery truck
 // ============================================================
 export function createTruck() {
+    const truckSpec = _specForType('truck');
+    const external = _tryCreateExternalRole('truck', {
+        ...truckSpec,
+        castShadow: true,
+        receiveShadow: true
+    });
+    if (external) {
+        external.userData.type = 'truck';
+        return external;
+    }
+
     const group = new THREE.Group();
 
     // Cargo bed (open top)
@@ -165,6 +374,17 @@ export function createTruck() {
 // HOUSE — cute little house
 // ============================================================
 export function createHouse() {
+    const buildingSpec = _specForType('building');
+    const external = _tryCreateExternalRole('building', {
+        ...buildingSpec,
+        castShadow: true,
+        receiveShadow: true
+    });
+    if (external) {
+        external.userData.type = 'house';
+        return external;
+    }
+
     const group = new THREE.Group();
 
     // Walls
@@ -302,6 +522,19 @@ export function createSheep(scale = 1) {
 // DOG — Swedish Vallhund
 // ============================================================
 export function createDog() {
+    if (EXTERNAL_DOG_ENABLED) {
+        const external = _tryCreateExternalRole('dog', {
+            targetHeight: 1.1,
+            maxExtent: 1.6,
+            castShadow: true,
+            receiveShadow: true
+        });
+        if (external) {
+            external.userData.type = 'dog';
+            return external;
+        }
+    }
+
     const group = new THREE.Group();
 
     // Body
@@ -387,7 +620,56 @@ const FURNITURE_COLORS = {
     vase: 0x2980b9,
 };
 
+function _polishExternalFurnitureMaterials(root, type) {
+    const accent = new THREE.Color(FURNITURE_COLORS[type] || 0xD2B48C);
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        const polished = mats.map((material) => {
+            if (!material || !material.isMaterial) return material;
+            const next = material.clone();
+
+            if (next.color && !next.map) {
+                const brightness = (next.color.r + next.color.g + next.color.b) / 3;
+                if (brightness > 0.78) {
+                    next.color.lerp(accent, 0.42);
+                } else {
+                    next.color.lerp(accent, 0.16);
+                }
+            }
+
+            if (typeof next.roughness === 'number') {
+                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.35, 0.86);
+            }
+            if (typeof next.metalness === 'number') {
+                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.02, 0.2);
+            }
+            return next;
+        });
+        node.material = Array.isArray(node.material) ? polished : polished[0];
+    });
+}
+
 export function createFurniture(type) {
+    if (EXTERNAL_FURNITURE_ENABLED && externalModelCatalog.ready) {
+        const external = externalModelCatalog.cloneFurnitureForType(type);
+        if (external) {
+            const spec = _specForType(type);
+            const prepared = _prepareExternalModel(external, {
+                ...spec,
+                validationType: type,
+                castShadow: false,
+                receiveShadow: true
+            });
+            if (prepared) {
+                _polishExternalFurnitureMaterials(prepared, type);
+                prepared.userData.type = 'furniture';
+                prepared.userData.furnitureType = type;
+                return prepared;
+            }
+        }
+    }
+
     const group = new THREE.Group();
     const color = FURNITURE_COLORS[type] || 0xD2B48C;
 

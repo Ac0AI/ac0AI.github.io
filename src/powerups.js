@@ -7,6 +7,8 @@ export class PowerUpManager {
     constructor(scene) {
         this.scene = scene;
         this.powerups = [];    // { model, type, timeout }
+        this._timers = new Set();
+        this._activeInput = null;
 
         // Combo state
         this.comboCount = 0;
@@ -44,7 +46,7 @@ export class PowerUpManager {
         this.powerups.push(entry);
 
         // Auto-remove after 8s
-        setTimeout(() => {
+        this._setManagedTimeout(() => {
             const idx = this.powerups.indexOf(entry);
             if (idx >= 0) {
                 this.scene.remove(entry.model);
@@ -54,6 +56,7 @@ export class PowerUpManager {
     }
 
     update(dt, playerPos, audio, ui, input) {
+        if (input) this._activeInput = input;
         const time = Date.now() * 0.001;
 
         // Animate power-ups (float + rotate)
@@ -102,7 +105,7 @@ export class PowerUpManager {
             case 'powerup_coffee':
                 label = '☕ TURBO!';
                 this.speedMultiplier = 2;
-                setTimeout(() => { this.speedMultiplier = 1; }, 5000);
+                this._setManagedTimeout(() => { this.speedMultiplier = 1; }, 5000);
                 break;
 
             case 'powerup_clock':
@@ -115,7 +118,7 @@ export class PowerUpManager {
                 label = '🛡️ SKÖLD!';
                 this.hasShield = true;
                 this._createShieldGlow();
-                setTimeout(() => {
+                this._setManagedTimeout(() => {
                     this.hasShield = false;
                     this._removeShieldGlow();
                 }, 5000);
@@ -126,7 +129,7 @@ export class PowerUpManager {
                 this.invertedControls = true;
                 if (input) input.invertControls = true;
                 if (audio) audio.playSynth('drop');
-                setTimeout(() => {
+                this._setManagedTimeout(() => {
                     this.invertedControls = false;
                     if (input) input.invertControls = false;
                 }, 5000);
@@ -202,7 +205,7 @@ export class PowerUpManager {
             this.eventMultiplier = 2;
             if (ui) ui.showEventBanner('💫 DUBBELPOÄNG! 💫');
 
-            setTimeout(() => {
+            this._setManagedTimeout(() => {
                 this.eventMultiplier = 1;
                 this.activeEvent = null;
                 if (ui) ui.hideEventBanner();
@@ -214,14 +217,29 @@ export class PowerUpManager {
 
             enemies.spawnBurst(8, playerPos, currentLevel);
 
-            setTimeout(() => {
+            this._setManagedTimeout(() => {
                 this.activeEvent = null;
                 if (ui) ui.hideEventBanner();
             }, 3000);
         }
     }
 
+    _setManagedTimeout(fn, delayMs) {
+        const id = setTimeout(() => {
+            this._timers.delete(id);
+            fn();
+        }, delayMs);
+        this._timers.add(id);
+        return id;
+    }
+
+    _clearManagedTimeouts() {
+        this._timers.forEach(id => clearTimeout(id));
+        this._timers.clear();
+    }
+
     clearAll() {
+        this._clearManagedTimeouts();
         this.powerups.forEach(p => this.scene.remove(p.model));
         this.powerups = [];
         this._removeShieldGlow();
@@ -234,6 +252,7 @@ export class PowerUpManager {
         this.speedMultiplier = 1;
         this.hasShield = false;
         this.invertedControls = false;
+        if (this._activeInput) this._activeInput.invertControls = false;
         this._clockBonus = false;
     }
 }
