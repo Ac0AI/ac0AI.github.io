@@ -120,13 +120,14 @@ export class World {
         this.dirLight.shadow.camera.bottom = -30;
         this.dirLight.shadow.camera.near = 1;
         this.dirLight.shadow.camera.far = 80;
-        this.dirLight.shadow.bias = -0.001;
-        this.dirLight.shadow.normalBias = 0.02;
+        this.dirLight.shadow.bias = -0.0005;
+        this.dirLight.shadow.normalBias = 0.04;
+        this.dirLight.shadow.radius = 2; // soft shadow edges
         this.scene.add(this.dirLight);
 
         // Secondary fill light for softer shadows
         const fillLight = new THREE.DirectionalLight(theme.dirLight, theme.dirIntensity * theme.fillFactor);
-        fillLight.position.set(-10, 15, -8);
+        fillLight.position.set(-15, 20, -10);
         this.scene.add(fillLight);
         this.fillLight = fillLight;
 
@@ -136,9 +137,9 @@ export class World {
         this.hemiLight = hemiLight;
 
         // Cool rim light for shape definition (no shadows, cheap)
-        const rimBase = this.quality.lowPower ? 0.16 : theme.rimIntensity;
+        const rimBase = this.quality.lowPower ? 0.2 : theme.rimIntensity;
         const rimLight = new THREE.DirectionalLight(0x9bd6ff, rimBase);
-        rimLight.position.set(-18, 14, 15);
+        rimLight.position.set(-20, 18, 20);
         rimLight.castShadow = false;
         this.scene.add(rimLight);
         this.rimLight = rimLight;

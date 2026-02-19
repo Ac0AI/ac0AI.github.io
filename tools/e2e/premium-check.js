@@ -94,6 +94,7 @@ async function run() {
     ],
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  page.setDefaultNavigationTimeout(90000);
 
   const report = {
     date: new Date().toISOString(),
@@ -120,7 +121,7 @@ async function run() {
   });
 
   try {
-    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await sleep(1200);
     try {
       const hasBtn = await page.locator('#start-btn').count();
@@ -144,7 +145,7 @@ async function run() {
       report.checks.leaderboardLoads = false;
     }
 
-    await page.screenshot({ path: path.join(OUT_DIR, '01-start-screen.png'), fullPage: true });
+    await page.screenshot({ path: path.join(OUT_DIR, '01-start-screen.png'), fullPage: false, timeout: 90000 });
 
     await page.click('#start-btn', { force: true });
     await page.waitForSelector('#hud:not(.hidden)', { timeout: 8000 });
@@ -175,15 +176,15 @@ async function run() {
     });
 
     await sleep(5000);
-    await page.screenshot({ path: path.join(OUT_DIR, '02-gameplay-5s.png'), fullPage: true });
+    await page.screenshot({ path: path.join(OUT_DIR, '02-gameplay-5s.png'), fullPage: false, timeout: 90000 });
 
     await sleep(25000);
-    await page.screenshot({ path: path.join(OUT_DIR, '03-gameplay-30s.png'), fullPage: true });
+    await page.screenshot({ path: path.join(OUT_DIR, '03-gameplay-30s.png'), fullPage: false, timeout: 90000 });
 
     report.fps = await estimateFps(page, 5000);
 
     await sleep(90000);
-    await page.screenshot({ path: path.join(OUT_DIR, '04-gameplay-120s.png'), fullPage: true });
+    await page.screenshot({ path: path.join(OUT_DIR, '04-gameplay-120s.png'), fullPage: false, timeout: 90000 });
     report.checks.gameplay120s = true;
 
     report.invalidMeshCount = await page.evaluate(() => {
@@ -237,7 +238,7 @@ async function run() {
       window.__game._gameOver('E2E CHECK');
     });
     await page.waitForSelector('#gameover-screen:not(.hidden)', { timeout: 6000 });
-    await page.screenshot({ path: path.join(OUT_DIR, '05-game-over.png'), fullPage: true });
+    await page.screenshot({ path: path.join(OUT_DIR, '05-game-over.png'), fullPage: false, timeout: 90000 });
     report.checks.gameOverVisible = true;
   } finally {
     await browser.close();

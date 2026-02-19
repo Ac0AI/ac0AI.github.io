@@ -3,7 +3,7 @@ import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { externalModelCatalog } from './external-model-catalog.js';
 import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 
-export const EXTERNAL_PLAYER_ENABLED = false;
+export const EXTERNAL_PLAYER_ENABLED = true;
 export const EXTERNAL_DOG_ENABLED = false;
 export const EXTERNAL_FURNITURE_ENABLED = true;
 
@@ -103,7 +103,7 @@ function _prepareExternalModel(root, opts = {}) {
     root.traverse((node) => {
         if (!node.isMesh || !node.geometry || suspiciousMesh) return;
         if (!node.geometry.boundingSphere) {
-            try { node.geometry.computeBoundingSphere(); } catch (_) {}
+            try { node.geometry.computeBoundingSphere(); } catch (_) { }
         }
         const sphere = node.geometry.boundingSphere;
         if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius <= 0) {
@@ -654,6 +654,13 @@ function _isNearWhite(material) {
     return brightness > 0.9 && saturation < 0.08;
 }
 
+function _isNearBlack(material) {
+    if (!material?.color) return false;
+    const { r, g, b } = material.color;
+    const brightness = (r + g + b) / 3;
+    return brightness < 0.08;
+}
+
 function _hasWorkingMap(material) {
     return !!(material?.map && material.map.image);
 }
@@ -682,35 +689,92 @@ function _buildExternalReskinMaterial(type, sourceMaterial) {
 
 function _polishExternalFurnitureMaterials(root, type) {
     const accent = new THREE.Color(FURNITURE_COLORS[type] || 0xD2B48C);
+    const surface = FURNITURE_SURFACES[type] || 'painted';
+    const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
     root.traverse((node) => {
         if (!node.isMesh || !node.material) return;
         const mats = Array.isArray(node.material) ? node.material : [node.material];
         const polished = mats.map((material) => {
             if (!material || !material.isMaterial) return material;
-            const needsReskin = !_hasWorkingMap(material) || _isNearWhite(material);
+            const hasMap = _hasWorkingMap(material);
+            // Only reskin completely if no map AND no color or very weird color.
+            // Many external models look better if left mostly alone.
+            const needsReskin = !hasMap && _isNearWhite(material);
+
             const next = needsReskin
                 ? _buildExternalReskinMaterial(type, material)
                 : material.clone();
 
-            if (next.color && !next.map) {
+            // If we don't have a map, try applying the procedural surface properties (like wood grain)
+            if (!next.map && surfaceProps.map) {
+                next.map = surfaceProps.map;
+            }
+
+            // Only tint if it's purely a color material (no map), to preserve original textures.
+            if (next.color && !hasMap) {
                 const brightness = (next.color.r + next.color.g + next.color.b) / 3;
                 if (brightness > 0.78) {
-                    next.color.lerp(accent, 0.5);
+                    next.color.lerp(accent, 0.4);
+                } else if (_isNearBlack(next)) {
+                    next.color.lerp(accent, 0.6);
                 } else {
-                    next.color.lerp(accent, 0.2);
+                    next.color.lerp(accent, 0.15); // lighter touch
                 }
             }
 
             if (typeof next.roughness === 'number') {
-                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.35, 0.86);
+                // Keep original roughness roughly intact, just bound it a bit.
+                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.2, 0.95);
             }
             if (typeof next.metalness === 'number') {
-                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.02, 0.2);
+                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.0, 0.5);
             }
-            next.envMapIntensity = Math.max(0.35, next.envMapIntensity || 0.35);
+
+            // Add a very subtle emissive rim for a "premium" pop
+            if ('emissive' in next) {
+                next.emissive = next.emissive || new THREE.Color(0x000000);
+                next.emissive.lerp(accent, 0.08);
+                next.emissiveIntensity = Math.max(0.06, next.emissiveIntensity || 0.06);
+            }
+            next.envMapIntensity = Math.max(0.4, next.envMapIntensity || 0.4);
             return next;
         });
         node.material = Array.isArray(node.material) ? polished : polished[0];
+    });
+}
+
+function _applyProceduralFurnitureFinish(root, type) {
+    const surface = FURNITURE_SURFACES[type] || 'painted';
+    const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
+    const accent = new THREE.Color(FURNITURE_COLORS[type] || 0xD2B48C);
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        const nextMats = mats.map((material) => {
+            if (!material || !material.isMaterial) return material;
+            const next = material.clone();
+
+            if (!next.map && surfaceProps.map) {
+                next.map = surfaceProps.map;
+            }
+            if (typeof next.roughness === 'number') {
+                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.38, 0.88);
+            }
+            if (typeof next.metalness === 'number') {
+                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.02, 0.18);
+            }
+            if (_isNearBlack(next)) {
+                next.color.lerp(accent, 0.52);
+            }
+            if ('emissive' in next) {
+                next.emissive = next.emissive || new THREE.Color(0x000000);
+                next.emissive.lerp(accent, 0.035);
+                next.emissiveIntensity = Math.max(0.02, next.emissiveIntensity || 0.02);
+            }
+            next.envMapIntensity = Math.max(0.28, next.envMapIntensity || 0.28);
+            return next;
+        });
+        node.material = Array.isArray(node.material) ? nextMats : nextMats[0];
     });
 }
 
@@ -1052,6 +1116,7 @@ export function createFurniture(type) {
             group.add(g);
     }
 
+    _applyProceduralFurnitureFinish(group, type);
     group.userData.type = 'furniture';
     group.userData.furnitureType = type;
     return group;

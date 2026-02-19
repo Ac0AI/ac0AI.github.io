@@ -2,7 +2,7 @@ export const VISUAL_PROFILE = 'premium_arcade_v2';
 
 export const POSTFX_PRESETS = {
     premium_arcade_v2: {
-        toneMappingExposure: 1.22,
+        toneMappingExposure: 1.45,
         bloom: {
             strength: { lowPower: 0.26, normal: 0.38 },
             radius: { lowPower: 0.58, normal: 0.72 },
@@ -29,13 +29,13 @@ export const LIGHTING_PRESETS = {
                 fog: 0x87CEEB,
                 fogDensity: 0.0058,
                 ambient: 0xffffff,
-                ambientIntensity: 0.72,
-                dirLight: 0xffffff,
-                dirIntensity: 1.12,
+                ambientIntensity: 0.85,
+                dirLight: 0xfff5e6,
+                dirIntensity: 1.4,
                 sky: 0x87CEEB,
-                fillFactor: 0.3,
-                hemiIntensity: 0.5,
-                rimIntensity: 0.24,
+                fillFactor: 0.4,
+                hemiIntensity: 0.65,
+                rimIntensity: 0.45,
                 ringOpacity: 0.28,
                 discOpacity: 0.1,
             },
