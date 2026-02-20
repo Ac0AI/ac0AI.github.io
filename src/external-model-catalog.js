@@ -41,6 +41,11 @@ class ExternalModelCatalog {
             truck: null,
             building: null,
             dog: null,
+            sheep: null,
+        };
+        this.animalIds = {
+            sheep: [],
+            dog: [],
         };
         this._ready = false;
         this._readyPromise = this._init();
@@ -73,6 +78,19 @@ class ExternalModelCatalog {
             this.roleId.dog = this._pickCuratedRoleId('dog') || this._findIdPreferStatic(
                 m => includesAny(m.id, ['dog']) || hasTag(m, 'animal')
             );
+            this.roleId.sheep = this._pickCuratedRoleId('sheep') || this._findIdPreferStatic(
+                m => (hasTag(m, 'animal') || includesAny(m.id, ['sheep', 'cow', 'horse', 'llama', 'pig', 'zebra']))
+                    && !includesAny(m.id, ['dog'])
+            );
+
+            this.animalIds.dog = this._collectCuratedIds('dog');
+            if (this.animalIds.dog.length === 0 && this.roleId.dog) {
+                this.animalIds.dog = [this.roleId.dog];
+            }
+            this.animalIds.sheep = this._collectCuratedIds('sheep');
+            if (this.animalIds.sheep.length === 0 && this.roleId.sheep) {
+                this.animalIds.sheep = [this.roleId.sheep];
+            }
 
             // Warm only hero models up-front; furniture is lazy-loaded for lower startup/memory cost.
             const idSet = new Set([
@@ -80,6 +98,9 @@ class ExternalModelCatalog {
                 this.roleId.truck,
                 this.roleId.building,
                 this.roleId.dog,
+                this.roleId.sheep,
+                ...this.animalIds.dog,
+                ...this.animalIds.sheep,
             ].filter(Boolean));
 
             await Promise.all([...idSet].map(id => this._loadById(id)));
@@ -129,6 +150,12 @@ class ExternalModelCatalog {
         return pick || null;
     }
 
+    _collectCuratedIds(role) {
+        const curated = CURATED_ROLE_MODELS[role];
+        if (!Array.isArray(curated) || curated.length === 0) return [];
+        return curated.filter(id => this.modelById.has(id));
+    }
+
     async _loadById(id) {
         if (this.templates.has(id)) return this.templates.get(id);
         if (this.loading.has(id)) return this.loading.get(id);
@@ -175,10 +202,24 @@ class ExternalModelCatalog {
 
     cloneAnimal(kind = 'dog') {
         if (kind === 'dog') {
+            const picks = this.animalIds.dog;
+            if (Array.isArray(picks) && picks.length > 0) {
+                const loaded = picks.filter(id => this.templates.has(id));
+                const source = loaded.length > 0 ? loaded : picks;
+                const id = source[Math.floor(Math.random() * source.length)];
+                return this.cloneById(id);
+            }
             return this.cloneRole('dog');
         }
         if (kind === 'sheep') {
-            return this.cloneRole('dog');
+            const picks = this.animalIds.sheep;
+            if (Array.isArray(picks) && picks.length > 0) {
+                const loaded = picks.filter(id => this.templates.has(id));
+                const source = loaded.length > 0 ? loaded : picks;
+                const id = source[Math.floor(Math.random() * source.length)];
+                return this.cloneById(id);
+            }
+            return this.cloneRole('sheep');
         }
         return null;
     }

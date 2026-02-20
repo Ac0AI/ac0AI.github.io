@@ -7,6 +7,7 @@ export class AudioManager {
         this.volume = parseFloat(localStorage.getItem('flyttsmart_volume')) || 0.25;
         this.muted = false;
         this.sounds = {};
+        this.soundGroups = {};
 
         try {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -35,7 +36,10 @@ export class AudioManager {
             loouser: 'assets/LOOUSER.mp3',
             recommend: 'assets/MOVESMART I WOULD RECOMMEND.mp3',
             sheep: 'assets/sheep.wav',
+            sheep_flock: 'assets/ANMLFarm-A_herd_of_sheep_and_-Elevenlabs.mp3',
+            pig: 'assets/ANMLFarm-pig_oink-Elevenlabs.mp3',
             dog: 'assets/dog.wav',
+            dog_pack: 'assets/ANMLDog-Group_of_dogs_barkin-Elevenlabs.mp3',
             cat: 'assets/cat.wav',
         };
 
@@ -51,6 +55,11 @@ export class AudioManager {
             }
             this.sounds[key] = audio;
         });
+
+        this.soundGroups = {
+            sheep: ['sheep', 'sheep_flock', 'pig'],
+            dog: ['dog', 'dog_pack'],
+        };
     }
 
     _setupVolumeControls() {
@@ -119,11 +128,20 @@ export class AudioManager {
     }
 
     playSound(key) {
-        const sound = this.sounds[key];
+        const soundKey = this._resolveSoundKey(key);
+        const sound = this.sounds[soundKey] || this.sounds[key];
         if (sound) {
             sound.currentTime = 0;
             sound.play().catch(() => { });
         }
+    }
+
+    _resolveSoundKey(key) {
+        const group = this.soundGroups[key];
+        if (!Array.isArray(group) || group.length === 0) return key;
+        const picks = group.filter(name => !!this.sounds[name]);
+        if (picks.length === 0) return key;
+        return picks[Math.floor(Math.random() * picks.length)];
     }
 
     playLevelJingle(level) {

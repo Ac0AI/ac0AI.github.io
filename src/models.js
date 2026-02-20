@@ -149,6 +149,21 @@ function _tryCreateExternalRole(role, opts = {}) {
     return root ? _prepareExternalModel(root, { ...opts, validationType: role }) : null;
 }
 
+function _tryCreateExternalAnimal(kind, opts = {}) {
+    if (!externalModelCatalog.ready) return null;
+    const root = externalModelCatalog.cloneAnimal(kind);
+    return root ? _prepareExternalModel(root, { ...opts, validationType: kind }) : null;
+}
+
+function _ensureColorMapColorSpace(material) {
+    const map = material?.map;
+    if (!map) return;
+    if (map.colorSpace !== THREE.SRGBColorSpace) {
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.needsUpdate = true;
+    }
+}
+
 function _polishExternalPlayerMaterials(root) {
     const suitColor = new THREE.Color(0x2f76d8);
     const skinColor = new THREE.Color(0xffcfb0);
@@ -171,6 +186,7 @@ function _polishExternalPlayerMaterials(root) {
             if (!next.map && props.map) {
                 next.map = props.map;
             }
+            _ensureColorMapColorSpace(next);
             if (next.color) {
                 next.color.lerp(targetColor, isSkinLike ? 0.48 : 0.58);
             }
@@ -516,7 +532,7 @@ export function createHouse() {
 // SHEEP — fluffy cloud sheep
 // ============================================================
 export function createSheep(scale = 1) {
-    const external = _tryCreateExternalRole('sheep', {
+    const external = _tryCreateExternalAnimal('sheep', {
         targetHeight: 1.2 * scale,
         maxExtent: 1.8 * scale,
         castShadow: true,
@@ -730,6 +746,16 @@ function _isNearWhite(material) {
     return brightness > 0.9 && saturation < 0.08;
 }
 
+function _isNearGray(material) {
+    if (!material?.color) return false;
+    const { r, g, b } = material.color;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const brightness = (r + g + b) / 3;
+    const saturation = max - min;
+    return brightness > 0.24 && brightness < 0.9 && saturation < 0.08;
+}
+
 function _isNearBlack(material) {
     if (!material?.color) return false;
     const { r, g, b } = material.color;
@@ -775,7 +801,7 @@ function _polishExternalFurnitureMaterials(root, type) {
             const hasMap = _hasWorkingMap(material);
             // Only reskin completely if no map AND no color or very weird color.
             // Many external models look better if left mostly alone.
-            const needsReskin = !hasMap && _isNearWhite(material);
+            const needsReskin = !hasMap && (_isNearWhite(material) || _isNearGray(material));
 
             const next = needsReskin
                 ? _buildExternalReskinMaterial(type, material)
@@ -785,6 +811,7 @@ function _polishExternalFurnitureMaterials(root, type) {
             if (!next.map && surfaceProps.map) {
                 next.map = surfaceProps.map;
             }
+            _ensureColorMapColorSpace(next);
 
             if (next.color) {
                 const brightness = (next.color.r + next.color.g + next.color.b) / 3;
@@ -795,13 +822,13 @@ function _polishExternalFurnitureMaterials(root, type) {
                 // Even with a texture map, Kenney models use a white base color and an atlas.
                 // We tint the base color so the texture inherits the accent.
                 if (saturation < 0.1) {
-                    next.color.lerp(accent, hasMap ? 0.35 : 0.85);
+                    next.color.lerp(accent, hasMap ? 0.55 : 0.9);
                 } else if (brightness > 0.78) {
-                    next.color.lerp(accent, hasMap ? 0.2 : 0.4);
+                    next.color.lerp(accent, hasMap ? 0.3 : 0.5);
                 } else if (_isNearBlack(next)) {
                     next.color.lerp(accent, 0.6);
                 } else {
-                    next.color.lerp(accent, 0.15); // lighter touch
+                    next.color.lerp(accent, 0.22); // lighter touch
                 }
             }
 
@@ -840,6 +867,7 @@ function _applyProceduralFurnitureFinish(root, type) {
             if (!next.map && surfaceProps.map) {
                 next.map = surfaceProps.map;
             }
+            _ensureColorMapColorSpace(next);
             if (typeof next.roughness === 'number') {
                 next.roughness = THREE.MathUtils.clamp(next.roughness, 0.38, 0.88);
             }

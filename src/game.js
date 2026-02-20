@@ -67,7 +67,7 @@ export class Game {
         // Player
         this.playerModel = null;
         this.playerPos = new THREE.Vector3(0, 0, 0);
-        this.playerSpeed = 10;
+        this.playerSpeed = 11;
         this.playerKeyLight = null;
         this.playerRimLight = null;
         this.playerShadowBlob = null;
