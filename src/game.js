@@ -36,6 +36,8 @@ const FURNITURE_TYPES = CURATED_FURNITURE_TYPES.length > 0
 const PROCEDURAL_FURNITURE_SCALE = 1.3;
 const PROCEDURAL_CARRY_SCALE_MULT = 1.5 / PROCEDURAL_FURNITURE_SCALE;
 const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;
+const FURNITURE_SPAWN_INTERVAL_SEC = 0.32;
+const GOLD_EMISSIVE_COLOR = new THREE.Color(0xFFD700);
 
 export class Game {
     constructor(scene, camera, quality = {}) {
@@ -84,6 +86,8 @@ export class Game {
         // Furniture
         this.furnitureItems = []; // { model, type, isGold, baseScale }
         this.carriedItem = null;
+        this._pendingFurnitureSpawns = 0;
+        this._furnitureSpawnAcc = 0;
 
         // Timers
         this._timerAcc = 0;
@@ -271,6 +275,8 @@ export class Game {
     _clearFurniture() {
         this.furnitureItems.forEach(f => this.scene.remove(f.model));
         this.furnitureItems = [];
+        this._pendingFurnitureSpawns = 0;
+        this._furnitureSpawnAcc = 0;
         if (this.carriedItem) {
             this.scene.remove(this.carriedItem.model);
             this.carriedItem = null;
@@ -293,31 +299,48 @@ export class Game {
     }
 
     _spawnFurniture(count = 1) {
-        let spawned = 0;
-        let attempts = 0;
-        const maxAttempts = Math.max(6, count * 8);
-        while (spawned < count && attempts < maxAttempts) {
-            if (this._spawnOneFurniture()) {
-                spawned++;
-            }
-            attempts++;
-        }
-        if (spawned < count && this.state === 'PLAYING') {
-            this._setManagedTimeout(() => {
-                if (this.state === 'PLAYING') {
-                    this._spawnFurniture(count - spawned);
-                }
-            }, 700);
+        const safeCount = Math.max(0, Math.ceil(count));
+        if (safeCount <= 0) return;
+        const primingSpawn = this._pendingFurnitureSpawns <= 0 && this.furnitureItems.length === 0;
+        this._pendingFurnitureSpawns += safeCount;
+        if (primingSpawn) {
+            this._furnitureSpawnAcc = FURNITURE_SPAWN_INTERVAL_SEC;
         }
     }
 
+    _processFurnitureSpawnQueue(dt) {
+        if (this._pendingFurnitureSpawns <= 0) return;
+        this._furnitureSpawnAcc += dt;
+        if (this._furnitureSpawnAcc < FURNITURE_SPAWN_INTERVAL_SEC) return;
+
+        this._furnitureSpawnAcc = 0;
+        const spawned = this._spawnOneFurniture();
+        if (spawned) {
+            this._pendingFurnitureSpawns = Math.max(0, this._pendingFurnitureSpawns - 1);
+            return;
+        }
+
+        // Back off slightly when no spawn candidate is available yet.
+        this._furnitureSpawnAcc = FURNITURE_SPAWN_INTERVAL_SEC * 0.45;
+    }
+
     _applyGoldTint(model) {
-        model.traverse(child => {
-            if (child.isMesh) {
-                child.material = child.material.clone();
-                child.material.emissive = new THREE.Color(0xFFD700);
-                child.material.emissiveIntensity = 0.3;
-            }
+        model.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            const nextMats = mats.map((material) => {
+                if (!material || !material.isMaterial) return material;
+                const next = material.clone();
+                if ('emissive' in next) {
+                    next.emissive = next.emissive || new THREE.Color(0x000000);
+                    next.emissive.copy(GOLD_EMISSIVE_COLOR);
+                    next.emissiveIntensity = 0.3;
+                } else if (next.color) {
+                    next.color.lerp(GOLD_EMISSIVE_COLOR, 0.28);
+                }
+                return next;
+            });
+            child.material = Array.isArray(child.material) ? nextMats : nextMats[0];
         });
     }
 
@@ -361,7 +384,7 @@ export class Game {
                     const idx = this.furnitureItems.indexOf(item);
                     if (idx >= 0) this.furnitureItems.splice(idx, 1);
                     // Spawn replacement so player doesn't run out
-                    this._spawnOneFurniture();
+                    this._spawnFurniture(1);
                 }
             }, 8000);
         }
@@ -572,10 +595,13 @@ export class Game {
             this.sheepSpawnCount = Math.min(8, this.sheepSpawnCount + 1);
         }
 
+        this._processFurnitureSpawnQueue(dt);
+
         // ---- Auto-replenish furniture if running low ----
         const availableFurniture = this.furnitureItems.filter(f => f !== this.carriedItem).length;
-        if (availableFurniture < 2) {
-            this._spawnFurniture(3 - availableFurniture);
+        const totalFurniture = availableFurniture + this._pendingFurnitureSpawns;
+        if (totalFurniture < 2) {
+            this._spawnFurniture(3 - totalFurniture);
         }
 
         // ---- Effects ----
@@ -773,7 +799,7 @@ export class Game {
                 if (this.currentLevel < this.maxLevel && this.itemsDelivered >= this.levelGoal) {
                     this._completeLevel();
                 } else {
-                    this._spawnOneFurniture();
+                    this._spawnFurniture(1);
                 }
             } else {
                 // Drop on ground — it will slide back to truck area after 10s

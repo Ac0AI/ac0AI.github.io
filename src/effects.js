@@ -82,13 +82,16 @@ export class Effects {
     // Gold shimmer
     updateGoldShimmer(model, time) {
         if (!model) return;
-        model.children.forEach(child => {
-            if (child.material) {
-                const pulse = 0.7 + Math.sin(time * 5) * 0.3;
-                child.material.emissive = child.material.emissive || new THREE.Color(0);
-                child.material.emissive.setHex(0xFFD700);
-                child.material.emissiveIntensity = pulse * 0.3;
-            }
+        const pulse = 0.7 + Math.sin(time * 5) * 0.3;
+        model.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((material) => {
+                if (!material || !material.isMaterial || !('emissive' in material)) return;
+                material.emissive = material.emissive || new THREE.Color(0x000000);
+                material.emissive.setHex(0xFFD700);
+                material.emissiveIntensity = pulse * 0.3;
+            });
         });
     }
 
