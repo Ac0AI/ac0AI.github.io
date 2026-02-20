@@ -60,12 +60,12 @@ function createPaintedTexture() {
 
 function createGrassTexture() {
     return createTexture(256, (ctx, size) => {
-        noiseFill(ctx, size, '#6ba94a', 600, 0.03, 0.13);
+        noiseFill(ctx, size, '#7cc856', 600, 0.03, 0.1);
         for (let i = 0; i < 420; i++) {
             const x = rand(0, size);
             const y = rand(0, size);
             const len = rand(2, 6);
-            ctx.strokeStyle = `rgba(30, 70, 20, ${rand(0.08, 0.26).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(40, 100, 30, ${rand(0.06, 0.18).toFixed(3)})`;
             ctx.beginPath();
             ctx.moveTo(x, y);
             ctx.lineTo(x + rand(-1.5, 1.5), y - len);

@@ -247,7 +247,7 @@ export class World {
         }
 
         // Tiny flower clusters
-        const flowerColors = [0xff6b9d, 0xf1c40f, 0xe74c3c, 0x9b59b6, 0xffffff, 0xff9ff3, 0x55efc4];
+        const flowerColors = [0xff5588, 0xffdd22, 0xff4455, 0xbb55ee, 0xffffff, 0xff88dd, 0x44eebb];
         for (let i = 0; i < flowerCount; i++) {
             const flowerGroup = new THREE.Group();
             const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
@@ -639,15 +639,17 @@ export class World {
             this.skyDome.geometry.dispose();
             this.skyDome.material.dispose();
         }
-        const skyGeo = new THREE.SphereGeometry(90, 32, 16);
+        const skyGeo = new THREE.SphereGeometry(90, 32, 24);
         const skyColors = [];
         const skyColor = new THREE.Color(theme.sky);
         const horizonColor = new THREE.Color(theme.fog);
         const posAttr = skyGeo.attributes.position;
+        const horizonBright = horizonColor.clone().offsetHSL(0, -0.1, 0.15);
         for (let i = 0; i < posAttr.count; i++) {
             const y = posAttr.getY(i);
             const t = Math.max(0, y / 90);  // 0 at horizon, 1 at zenith
-            const c = horizonColor.clone().lerp(skyColor, t * t);
+            // Smoother gradient: warm horizon → vivid sky
+            const c = horizonBright.clone().lerp(skyColor, Math.pow(t, 1.5));
             skyColors.push(c.r, c.g, c.b);
         }
         skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColors, 3));
@@ -667,10 +669,11 @@ export class World {
         const horizonColor = new THREE.Color(theme.fog);
         const colorAttr = this.skyDome.geometry.attributes.color;
         const posAttr = this.skyDome.geometry.attributes.position;
+        const horizonBright = horizonColor.clone().offsetHSL(0, -0.1, 0.15);
         for (let i = 0; i < posAttr.count; i++) {
             const y = posAttr.getY(i);
             const t = Math.max(0, y / 90);
-            const c = horizonColor.clone().lerp(skyColor, t * t);
+            const c = horizonBright.clone().lerp(skyColor, Math.pow(t, 1.5));
             colorAttr.setXYZ(i, c.r, c.g, c.b);
         }
         colorAttr.needsUpdate = true;
