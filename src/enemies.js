@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createSheep, createDog } from './models.js';
 
 // Sheep + Dog enemy manager
+const BOSS_TINT_COLOR = new THREE.Color(0xff4444);
 
 export class EnemyManager {
     constructor(scene) {
@@ -81,12 +82,21 @@ export class EnemyManager {
 
         const model = createSheep(2.0);
         model.position.set(bx, 0, bz);
-        // Tint boss red
-        model.traverse(child => {
-            if (child.isMesh && child.material.color.getHex() === 0xffffff) {
-                child.material = child.material.clone();
-                child.material.color.setHex(0xff4444);
-            }
+        // Tint boss red (guard against imported models with material arrays / non-color materials)
+        model.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            const tinted = mats.map((material) => {
+                if (!material || !material.isMaterial || !material.color) return material;
+                const next = material.clone();
+                if (next.color.getHex() === 0xffffff) {
+                    next.color.copy(BOSS_TINT_COLOR);
+                } else {
+                    next.color.lerp(BOSS_TINT_COLOR, 0.22);
+                }
+                return next;
+            });
+            child.material = Array.isArray(child.material) ? tinted : tinted[0];
         });
         this.scene.add(model);
 
@@ -213,9 +223,10 @@ export class EnemyManager {
 
     // Dog — chases and removes sheep
     spawnDog(playerPos, audio) {
-        if (this.activeDog) return;
-        this.activeDog = true;
-        this.dogAge = 0;
+        if (this.activeDog && this.dog) return;
+        if (this.activeDog && !this.dog) {
+            this._finishDog();
+        }
 
         const worldSize = 18;
         const edge = Math.floor(Math.random() * 4);
@@ -227,15 +238,38 @@ export class EnemyManager {
             case 3: dx = worldSize; dz = (Math.random() - 0.5) * worldSize; break;
         }
 
-        this.dog = createDog();
+        let model = null;
+        try {
+            model = createDog();
+        } catch (err) {
+            console.error('Dog spawn failed:', err);
+            this._finishDog();
+            return;
+        }
+        if (!model) {
+            this._finishDog();
+            return;
+        }
+
+        this.dog = model;
         this.dog.position.set(dx, 0, dz);
         this.scene.add(this.dog);
+        this.activeDog = true;
+        this.dogAge = 0;
 
-        if (audio) audio.playSound('dog');
+        if (audio) {
+            try {
+                audio.playSound('dog');
+            } catch (_) { }
+        }
     }
 
     _updateDog(dt) {
-        if (!this.activeDog || !this.dog) return;
+        if (!this.activeDog) return;
+        if (!this.dog) {
+            this._finishDog();
+            return;
+        }
 
         this.dogAge += dt;
         if (this.dogAge >= this.dogDuration || this.sheep.length === 0) {

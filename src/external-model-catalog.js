@@ -99,8 +99,6 @@ class ExternalModelCatalog {
                 this.roleId.building,
                 this.roleId.dog,
                 this.roleId.sheep,
-                ...this.animalIds.dog,
-                ...this.animalIds.sheep,
             ].filter(Boolean));
 
             await Promise.all([...idSet].map(id => this._loadById(id)));

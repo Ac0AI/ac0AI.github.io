@@ -532,7 +532,7 @@ export function createHouse() {
 // SHEEP — fluffy cloud sheep
 // ============================================================
 export function createSheep(scale = 1) {
-    const external = _tryCreateExternalAnimal('sheep', {
+    const external = _tryCreateExternalRole('sheep', {
         targetHeight: 1.2 * scale,
         maxExtent: 1.8 * scale,
         castShadow: true,
