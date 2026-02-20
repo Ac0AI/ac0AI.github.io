@@ -1,29 +1,7 @@
-export const CURATED_FURNITURE_BY_TYPE = Object.freeze({
-    box: ['u_furniture_box_001_'],
-    sofa: ['u_furniture_sofa_001_', 'u_furniture_lounge_chair_001_'],
-    tv: [],
-    lamp: ['u_furniture_lamp_001_', 'u_furniture_lamp_002_'],
-    plant: ['u_furniture_flower_001_'],
-    bookshelf: ['u_furniture_closet_001_', 'u_furniture_closet_002_', 'u_furniture_dresser_001_'],
-    chair: ['u_furniture_kitchen_chair_001_', 'u_furniture_lounge_chair_001_'],
-    fridge: ['u_furniture_fridge_001_'],
-    console: [],
-    freezer: ['u_furniture_washing_machine_001_', 'u_furniture_fridge_001_'],
-    cd: [],
-    radio: [],
-    guitar: [],
-    clock: [],
-    washer: ['u_furniture_washing_machine_001_'],
-    table: ['u_furniture_kitchen_table_001_', 'u_furniture_office_table_001_', 'u_furniture_coffee_table_001_'],
-    mirror: [],
-    rug: [],
-    piano: [],
-    microwave: ['u_furniture_microwave_oven_001_'],
-    vase: [],
-});
+export const CURATED_FURNITURE_BY_TYPE = Object.freeze({});
 
 export const CURATED_ROLE_MODELS = Object.freeze({
-    player: ['u_body_body_010_static'],
+    player: [],
     dog: [],
     truck: ['u_van_van_'],
     building: ['u_building_eco_building_terrace_'],

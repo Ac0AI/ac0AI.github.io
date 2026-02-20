@@ -21,7 +21,7 @@ const lowCpuDevice = typeof navigator !== 'undefined' && typeof navigator.hardwa
 const lowPowerMode = lowMemoryDevice || lowCpuDevice;
 const quality = {
     lowPower: lowPowerMode,
-    maxPixelRatio: lowPowerMode ? 1.25 : 1.65,
+    maxPixelRatio: lowPowerMode ? 1.5 : 2.0,
     shadowMapSize: lowPowerMode ? 1024 : 1536,
     particleCount: lowPowerMode ? 84 : 120,
 };

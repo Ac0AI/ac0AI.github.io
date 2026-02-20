@@ -3,9 +3,9 @@ import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { externalModelCatalog } from './external-model-catalog.js';
 import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 
-export const EXTERNAL_PLAYER_ENABLED = true;
+export const EXTERNAL_PLAYER_ENABLED = false;
 export const EXTERNAL_DOG_ENABLED = false;
-export const EXTERNAL_FURNITURE_ENABLED = true;
+export const EXTERNAL_FURNITURE_ENABLED = false;
 const STRICT_CURATED_FURNITURE = true;
 
 // ============================================================
@@ -240,97 +240,108 @@ export function createPlayer() {
 
     const group = new THREE.Group();
 
-    // Body (blue overalls)
-    const body = box(0.7, 0.8, 0.5, 0x3498db);
-    body.position.y = 0.7;
+    // Body (chubby overalls)
+    const body = cylinder(0.42, 0.48, 0.7, 0x3498db, 10, { surface: 'fabric' });
+    body.position.y = 0.65;
     group.add(body);
 
-    // Overall bib + buttons
-    const bib = box(0.42, 0.3, 0.06, 0x2e86c1, { surface: 'fabric' });
-    bib.position.set(0, 0.77, 0.25);
+    // Belly bump
+    const belly = sphere(0.4, 0x3498db, { surface: 'fabric' });
+    belly.position.set(0, 0.5, 0.15);
+    belly.scale.set(1, 0.8, 1.2);
+    group.add(belly);
+
+    // Overall bib
+    const bib = box(0.46, 0.35, 0.1, 0x2e86c1, { surface: 'fabric' });
+    bib.position.set(0, 0.82, 0.38);
     group.add(bib);
-    const btnL = sphere(0.03, 0xf1c40f, { surface: 'metal' });
-    btnL.position.set(-0.11, 0.82, 0.29);
+
+    // Buttons
+    const btnL = sphere(0.045, 0xf1c40f, { surface: 'metal' });
+    btnL.position.set(-0.15, 0.9, 0.45);
     group.add(btnL);
-    const btnR = sphere(0.03, 0xf1c40f, { surface: 'metal' });
-    btnR.position.set(0.11, 0.82, 0.29);
+    const btnR = sphere(0.045, 0xf1c40f, { surface: 'metal' });
+    btnR.position.set(0.15, 0.9, 0.45);
     group.add(btnR);
 
-    // Head (skin color)
-    const head = sphere(0.3, 0xffccaa);
+    // Head (skin color, slightly oversized for cuteness)
+    const head = sphere(0.38, 0xffccaa);
     head.position.y = 1.45;
     head.userData.baseY = head.position.y;
     group.add(head);
 
     // Nose
-    const nose = sphere(0.035, 0xf7b998);
-    nose.position.set(0, 1.4, 0.29);
+    const nose = sphere(0.06, 0xf7b998);
+    nose.position.set(0, 1.4, 0.38);
     group.add(nose);
 
-    // Cap (dark blue)
-    const cap = cylinder(0.32, 0.32, 0.12, 0x2980b9, 12);
-    cap.position.y = 1.65;
+    // Cap (dark blue, rounder)
+    const cap = sphere(0.39, 0x2980b9, { surface: 'fabric' });
+    cap.position.y = 1.55;
+    cap.scale.set(1, 0.6, 1);
     group.add(cap);
 
     // Cap brim
-    const brim = cylinder(0.35, 0.35, 0.04, 0x2980b9, 12);
-    brim.position.y = 1.55;
-    brim.position.z = 0.1;
+    const brim = cylinder(0.4, 0.4, 0.05, 0x2980b9, 12, { surface: 'fabric' });
+    brim.position.set(0, 1.55, 0.15);
+    brim.scale.set(1, 1, 1.2);
     group.add(brim);
 
     // Eyes
-    const eyeL = sphere(0.05, 0x000000);
-    eyeL.position.set(-0.1, 1.45, 0.25);
+    const eyeL = sphere(0.06, 0x222222, { surface: 'metal', roughness: 0.2, metalness: 0.8 });
+    eyeL.position.set(-0.14, 1.48, 0.32);
     group.add(eyeL);
 
-    const eyeR = sphere(0.05, 0x000000);
-    eyeR.position.set(0.1, 1.45, 0.25);
+    const eyeR = sphere(0.06, 0x222222, { surface: 'metal', roughness: 0.2, metalness: 0.8 });
+    eyeR.position.set(0.14, 1.48, 0.32);
     group.add(eyeR);
 
     // Cheeks
-    const cheekL = sphere(0.04, 0xffb2a3, { surface: 'painted', transparent: true, opacity: 0.75 });
-    cheekL.position.set(-0.16, 1.36, 0.23);
+    const cheekL = sphere(0.05, 0xff9988, { surface: 'painted', transparent: true, opacity: 0.6 });
+    cheekL.position.set(-0.2, 1.36, 0.3);
     group.add(cheekL);
-    const cheekR = sphere(0.04, 0xffb2a3, { surface: 'painted', transparent: true, opacity: 0.75 });
-    cheekR.position.set(0.16, 1.36, 0.23);
+    const cheekR = sphere(0.05, 0xff9988, { surface: 'painted', transparent: true, opacity: 0.6 });
+    cheekR.position.set(0.2, 1.36, 0.3);
     group.add(cheekR);
 
-    // Legs
-    const legL = box(0.2, 0.5, 0.2, 0x2c3e50);
-    legL.position.set(-0.18, 0.15, 0);
+    // Legs (thicker)
+    const legL = cylinder(0.16, 0.14, 0.5, 0x2c3e50, 8, { surface: 'fabric' });
+    legL.position.set(-0.22, 0.2, 0);
     legL.userData.baseY = legL.position.y;
     group.add(legL);
 
-    const legR = box(0.2, 0.5, 0.2, 0x2c3e50);
-    legR.position.set(0.18, 0.15, 0);
+    const legR = cylinder(0.16, 0.14, 0.5, 0x2c3e50, 8, { surface: 'fabric' });
+    legR.position.set(0.22, 0.2, 0);
     legR.userData.baseY = legR.position.y;
     group.add(legR);
 
-    // Shoes
-    const shoeL = box(0.24, 0.09, 0.28, 0x111111, { surface: 'stone', roughness: 0.92, metalness: 0.01 });
-    shoeL.position.set(-0.18, 0.03, 0.03);
+    // Shoes (rounder)
+    const shoeL = cylinder(0.16, 0.18, 0.15, 0x1a1a1a, 10, { surface: 'stone', roughness: 0.8, metalness: 0.1 });
+    shoeL.position.set(-0.22, 0.05, 0.08);
+    shoeL.scale.set(1, 1, 1.4);
     group.add(shoeL);
-    const shoeR = box(0.24, 0.09, 0.28, 0x111111, { surface: 'stone', roughness: 0.92, metalness: 0.01 });
-    shoeR.position.set(0.18, 0.03, 0.03);
+    const shoeR = cylinder(0.16, 0.18, 0.15, 0x1a1a1a, 10, { surface: 'stone', roughness: 0.8, metalness: 0.1 });
+    shoeR.position.set(0.22, 0.05, 0.08);
+    shoeR.scale.set(1, 1, 1.4);
     group.add(shoeR);
 
-    // Arms
-    const armL = box(0.15, 0.5, 0.15, 0x3498db);
-    armL.position.set(-0.5, 0.75, 0);
+    // Arms (cylinders)
+    const armL = cylinder(0.12, 0.1, 0.6, 0x3498db, 8, { surface: 'fabric' });
+    armL.position.set(-0.55, 0.75, 0);
     armL.userData.baseY = armL.position.y;
     group.add(armL);
 
-    const armR = box(0.15, 0.5, 0.15, 0x3498db);
-    armR.position.set(0.5, 0.75, 0);
+    const armR = cylinder(0.12, 0.1, 0.6, 0x3498db, 8, { surface: 'fabric' });
+    armR.position.set(0.55, 0.75, 0);
     armR.userData.baseY = armR.position.y;
     group.add(armR);
 
-    // Gloves
-    const gloveL = sphere(0.08, 0xffccaa, { surface: 'fabric' });
-    gloveL.position.set(-0.5, 0.5, 0.06);
+    // Gloves (thick)
+    const gloveL = sphere(0.11, 0xffccaa, { surface: 'fabric' });
+    gloveL.position.set(-0.55, 0.45, 0.06);
     group.add(gloveL);
-    const gloveR = sphere(0.08, 0xffccaa, { surface: 'fabric' });
-    gloveR.position.set(0.5, 0.5, 0.06);
+    const gloveR = sphere(0.11, 0xffccaa, { surface: 'fabric' });
+    gloveR.position.set(0.55, 0.45, 0.06);
     group.add(gloveR);
 
     group.userData.type = 'player';
@@ -862,34 +873,41 @@ export function createFurniture(type) {
             break;
 
         case 'sofa':
-            const seat = box(0.8, 0.3, 0.4, color);
+            const seat = box(0.9, 0.35, 0.45, color, { surface: 'fabric' });
             seat.position.y = 0.25;
             group.add(seat);
-            const back = box(0.8, 0.35, 0.1, 0x229954);
-            back.position.set(0, 0.47, -0.2);
-            group.add(back);
-            const armL = box(0.1, 0.3, 0.4, 0x229954);
-            armL.position.set(-0.4, 0.35, 0);
-            group.add(armL);
-            const armR = box(0.1, 0.3, 0.4, 0x229954);
-            armR.position.set(0.4, 0.35, 0);
-            group.add(armR);
+            const backS = box(0.9, 0.4, 0.15, 0x229954, { surface: 'fabric' });
+            backS.position.set(0, 0.55, -0.2);
+            group.add(backS);
+            const armLS = box(0.15, 0.35, 0.45, 0x229954, { surface: 'fabric' });
+            armLS.position.set(-0.45, 0.45, 0);
+            group.add(armLS);
+            const armRS = box(0.15, 0.35, 0.45, 0x229954, { surface: 'fabric' });
+            armRS.position.set(0.45, 0.45, 0);
+            group.add(armRS);
+            // Cute cushion
+            const cushionL = box(0.35, 0.1, 0.25, 0xf1c40f, { surface: 'fabric' });
+            cushionL.position.set(-0.2, 0.45, -0.05);
+            group.add(cushionL);
+            const cushionR = box(0.35, 0.1, 0.25, 0xf1c40f, { surface: 'fabric' });
+            cushionR.position.set(0.2, 0.45, -0.05);
+            group.add(cushionR);
             break;
 
         case 'tv':
-            const screen = box(0.7, 0.45, 0.05, 0x1a1a1a);
-            screen.position.y = 0.55;
+            const screen = box(0.8, 0.5, 0.1, 0x222222, { surface: 'metal' });
+            screen.position.y = 0.6;
             group.add(screen);
-            // Screen display
-            const display = box(0.6, 0.35, 0.01, 0x3498db, { emissive: 0x1a5276, emissiveIntensity: 0.3 });
-            display.position.set(0, 0.55, 0.03);
+            // Screen display (emissive)
+            const display = box(0.72, 0.4, 0.02, 0x3498db, { emissive: 0x1a5276, emissiveIntensity: 0.5 });
+            display.position.set(0, 0.6, 0.05);
             group.add(display);
             // Stand
-            const stand = cylinder(0.04, 0.04, 0.3, 0x333333);
-            stand.position.y = 0.15;
+            const stand = cylinder(0.06, 0.06, 0.3, 0x1a1a1a, 8, { surface: 'stone' });
+            stand.position.y = 0.2;
             group.add(stand);
-            const base = cylinder(0.15, 0.15, 0.04, 0x333333, 12);
-            base.position.y = 0.02;
+            const base = box(0.4, 0.06, 0.2, 0x1a1a1a, { surface: 'stone' });
+            base.position.y = 0.03;
             group.add(base);
             break;
 
@@ -950,12 +968,24 @@ export function createFurniture(type) {
             break;
 
         case 'fridge':
-            const fridgeBody = box(0.5, 0.9, 0.45, color);
-            fridgeBody.position.y = 0.45;
+            const fridgeBody = box(0.6, 1.2, 0.5, color, { surface: 'metal' });
+            fridgeBody.position.y = 0.6;
             group.add(fridgeBody);
-            const fridgeHandle = cylinder(0.02, 0.02, 0.3, 0x808080);
-            fridgeHandle.position.set(0.27, 0.55, 0);
-            group.add(fridgeHandle);
+            // Top door
+            const fridgeDoor1 = box(0.58, 0.7, 0.05, 0xe0e0e0, { surface: 'metal' });
+            fridgeDoor1.position.set(0, 0.8, 0.26);
+            group.add(fridgeDoor1);
+            // Bottom door
+            const fridgeDoor2 = box(0.58, 0.35, 0.05, 0xe0e0e0, { surface: 'metal' });
+            fridgeDoor2.position.set(0, 0.22, 0.26);
+            group.add(fridgeDoor2);
+            // Handles
+            const handle1 = cylinder(0.02, 0.02, 0.3, 0x808080, 8, { surface: 'metal' });
+            handle1.position.set(0.2, 0.8, 0.3);
+            group.add(handle1);
+            const handle2 = cylinder(0.02, 0.02, 0.15, 0x808080, 8, { surface: 'metal' });
+            handle2.position.set(0.2, 0.28, 0.3);
+            group.add(handle2);
             break;
 
         case 'console':
@@ -1044,12 +1074,12 @@ export function createFurniture(type) {
 
         case 'table':
             // Wooden dining table
-            const tTop = box(0.8, 0.06, 0.5, color);
-            tTop.position.y = 0.45;
+            const tTop = box(0.9, 0.08, 0.55, color, { surface: 'wood' });
+            tTop.position.y = 0.5;
             group.add(tTop);
-            [[-0.33, 0, -0.18], [0.33, 0, -0.18], [-0.33, 0, 0.18], [0.33, 0, 0.18]].forEach(([tx, ty, tz]) => {
-                const tLeg = cylinder(0.03, 0.03, 0.45, 0x6B4513);
-                tLeg.position.set(tx, 0.225, tz);
+            [[-0.38, 0, -0.22], [0.38, 0, -0.22], [-0.38, 0, 0.22], [0.38, 0, 0.22]].forEach(([tx, ty, tz]) => {
+                const tLeg = cylinder(0.04, 0.03, 0.5, 0x6B4513, 8, { surface: 'wood' });
+                tLeg.position.set(tx, 0.25, tz);
                 group.add(tLeg);
             });
             break;

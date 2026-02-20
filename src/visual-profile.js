@@ -2,11 +2,11 @@ export const VISUAL_PROFILE = 'premium_arcade_v2';
 
 export const POSTFX_PRESETS = {
     premium_arcade_v2: {
-        toneMappingExposure: 1.45,
+        toneMappingExposure: 1.65,
         bloom: {
-            strength: { lowPower: 0.26, normal: 0.38 },
-            radius: { lowPower: 0.58, normal: 0.72 },
-            threshold: { lowPower: 0.28, normal: 0.22 },
+            strength: { lowPower: 0.15, normal: 0.22 },
+            radius: { lowPower: 0.3, normal: 0.4 },
+            threshold: { lowPower: 0.5, normal: 0.55 },
         },
         vignette: {
             innerStopPct: 64,
@@ -27,11 +27,11 @@ export const LIGHTING_PRESETS = {
             {
                 ground: 0x7ec850,
                 fog: 0x87CEEB,
-                fogDensity: 0.0058,
+                fogDensity: 0.005,
                 ambient: 0xffffff,
-                ambientIntensity: 0.85,
-                dirLight: 0xfff5e6,
-                dirIntensity: 1.4,
+                ambientIntensity: 0.95,
+                dirLight: 0xfffcf0,
+                dirIntensity: 1.55,
                 sky: 0x87CEEB,
                 fillFactor: 0.4,
                 hemiIntensity: 0.65,

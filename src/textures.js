@@ -87,25 +87,25 @@ function createDirtTexture() {
 function createWoodTexture() {
     return createTexture(256, (ctx, size) => {
         const g = ctx.createLinearGradient(0, 0, 0, size);
-        g.addColorStop(0, '#a06a3d');
-        g.addColorStop(1, '#6f4626');
+        g.addColorStop(0, '#d18641');
+        g.addColorStop(1, '#9b5d25');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
 
-        for (let i = 0; i < 36; i++) {
-            const y = i * (size / 36);
-            ctx.strokeStyle = `rgba(45, 27, 14, ${rand(0.14, 0.28).toFixed(3)})`;
-            ctx.lineWidth = rand(1, 2.8);
+        for (let i = 0; i < 40; i++) {
+            const y = i * (size / 40);
+            ctx.strokeStyle = `rgba(87, 44, 15, ${rand(0.2, 0.4).toFixed(3)})`;
+            ctx.lineWidth = rand(1, 3);
             ctx.beginPath();
-            ctx.moveTo(0, y + rand(-2, 2));
+            ctx.moveTo(0, y + rand(-4, 4));
             ctx.bezierCurveTo(
-                size * 0.33, y + rand(-6, 6),
-                size * 0.66, y + rand(-6, 6),
-                size, y + rand(-2, 2)
+                size * 0.33, y + rand(-10, 10),
+                size * 0.66, y + rand(-10, 10),
+                size, y + rand(-4, 4)
             );
             ctx.stroke();
         }
-    }, 3, 3);
+    }, 2, 2);
 }
 
 function createBarkTexture() {
@@ -136,30 +136,35 @@ function createStoneTexture() {
 function createMetalTexture() {
     return createTexture(256, (ctx, size) => {
         const g = ctx.createLinearGradient(0, 0, size, size);
-        g.addColorStop(0, '#b8c3cc');
-        g.addColorStop(0.5, '#95a3ae');
-        g.addColorStop(1, '#c8d1d8');
+        g.addColorStop(0, '#d2dee8');
+        g.addColorStop(0.5, '#a4b5c4');
+        g.addColorStop(1, '#e6f0f7');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, size, size);
 
-        for (let i = 0; i < 160; i++) {
-            ctx.strokeStyle = `rgba(255,255,255,${rand(0.04, 0.16).toFixed(3)})`;
+        ctx.fillStyle = `rgba(255,255,255,0.08)`;
+        ctx.fillRect(0, 0, size, size * 0.1);
+        ctx.fillStyle = `rgba(0,0,0,0.05)`;
+        ctx.fillRect(0, size * 0.9, size, size);
+
+        for (let i = 0; i < 80; i++) {
+            ctx.strokeStyle = `rgba(255,255,255,${rand(0.08, 0.2).toFixed(3)})`;
             ctx.beginPath();
-            ctx.moveTo(rand(0, size), rand(0, size));
-            ctx.lineTo(rand(0, size), rand(0, size));
+            ctx.moveTo(0, rand(0, size));
+            ctx.lineTo(size, rand(0, size));
             ctx.stroke();
         }
-    }, 3, 3);
+    }, 2, 2);
 }
 
 function createFabricTexture() {
     return createTexture(256, (ctx, size) => {
-        ctx.fillStyle = '#8fa7c6';
+        ctx.fillStyle = '#a6bad3';
         ctx.fillRect(0, 0, size, size);
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 2;
 
-        for (let i = 0; i < size; i += 8) {
+        for (let i = 0; i < size; i += 6) {
             ctx.beginPath();
             ctx.moveTo(i, 0);
             ctx.lineTo(i, size);
@@ -169,8 +174,10 @@ function createFabricTexture() {
             ctx.moveTo(0, i);
             ctx.lineTo(size, i);
             ctx.stroke();
+
+            ctx.strokeStyle = `rgba(0,0,0,${rand(0.02, 0.05).toFixed(3)})`;
         }
-    }, 4, 4);
+    }, 2, 2);
 }
 
 export function createTexturePack() {
