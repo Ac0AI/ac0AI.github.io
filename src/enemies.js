@@ -98,9 +98,10 @@ export class EnemyManager {
         });
     }
 
-    update(dt, playerPos, currentLevel, hasGracePeriod, hasShield, world) {
+    update(dt, playerPos, currentLevel, hasGracePeriod, hasShield, isTurbo, world) {
         const worldSize = 22;
         let hitPlayer = false;
+        let roadkills = [];
 
         for (let i = this.sheep.length - 1; i >= 0; i--) {
             const s = this.sheep[i];
@@ -171,20 +172,28 @@ export class EnemyManager {
             }
 
             // Collision with player
-            if (!hasGracePeriod && !hasShield) {
+            if (!hasGracePeriod) {
                 const dist = Math.sqrt(
                     (playerPos.x - s.model.position.x) ** 2 +
                     (playerPos.z - s.model.position.z) ** 2
                 );
+                // Make hit radius a bit more forgiving for roadkill
                 const hitRadius = s.isBoss ? 2.5 : 1.2;
                 if (dist < hitRadius) {
-                    hitPlayer = true;
+                    if (hasShield || isTurbo) {
+                        // VÄGMORD! Remove sheep and track to pass back
+                        roadkills.push({ pos: s.model.position.clone(), isBoss: s.isBoss });
+                        this.scene.remove(s.model);
+                        this.sheep.splice(i, 1);
+                    } else {
+                        hitPlayer = true;
+                    }
                 }
             }
         }
 
         this._updateDog(dt);
-        return hitPlayer;
+        return { hitPlayer, roadkills };
     }
 
     clearAll() {

@@ -3,10 +3,10 @@ import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { externalModelCatalog } from './external-model-catalog.js';
 import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 
-export const EXTERNAL_PLAYER_ENABLED = false;
-export const EXTERNAL_DOG_ENABLED = false;
-export const EXTERNAL_FURNITURE_ENABLED = false;
-const STRICT_CURATED_FURNITURE = true;
+export const EXTERNAL_PLAYER_ENABLED = true;
+export const EXTERNAL_DOG_ENABLED = true;
+export const EXTERNAL_FURNITURE_ENABLED = true;
+const STRICT_CURATED_FURNITURE = false;
 
 // ============================================================
 // LOW-POLY PROCEDURAL 3D MODEL FACTORY
@@ -66,7 +66,12 @@ function _prepareExternalModel(root, opts = {}) {
         !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
         || _tmpSize.y <= 0.0001 || _tmpSize.x <= 0.0001 || _tmpSize.z <= 0.0001
     ) {
-        return null;
+        if (hasSkinnedMesh) {
+            _tmpSize.set(1, 1, 1);
+            _tmpCenter.set(0, 0, 0);
+        } else {
+            return null;
+        }
     }
 
     const modelType = opts.validationType || opts.furnitureType || opts.role || 'default';
@@ -86,9 +91,11 @@ function _prepareExternalModel(root, opts = {}) {
         !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
         || _tmpSize.y > 9 || Math.max(_tmpSize.x, _tmpSize.z) > 9
     ) {
-        return null;
+        if (!hasSkinnedMesh) return null;
     }
-    _tmpBox.getCenter(_tmpCenter);
+    if (!hasSkinnedMesh) {
+        _tmpBox.getCenter(_tmpCenter);
+    }
     root.position.x -= _tmpCenter.x;
     root.position.z -= _tmpCenter.z;
     root.position.y -= _tmpBox.min.y;
@@ -229,7 +236,8 @@ export function createPlayer() {
             targetHeight: 1.95,
             maxExtent: 1.35,
             castShadow: true,
-            receiveShadow: true
+            receiveShadow: true,
+            allowSkinned: true
         });
         if (external) {
             _polishExternalPlayerMaterials(external);
@@ -508,6 +516,18 @@ export function createHouse() {
 // SHEEP — fluffy cloud sheep
 // ============================================================
 export function createSheep(scale = 1) {
+    const external = _tryCreateExternalRole('sheep', {
+        targetHeight: 1.2 * scale,
+        maxExtent: 1.8 * scale,
+        castShadow: true,
+        receiveShadow: true,
+        allowSkinned: true
+    });
+    if (external) {
+        external.userData.type = 'sheep';
+        return external;
+    }
+
     const group = new THREE.Group();
 
     // Body fluff (cluster of white spheres)
@@ -582,7 +602,8 @@ export function createDog() {
             targetHeight: 1.1,
             maxExtent: 1.6,
             castShadow: true,
-            receiveShadow: true
+            receiveShadow: true,
+            allowSkinned: true
         });
         if (external) {
             external.userData.type = 'dog';
@@ -765,11 +786,18 @@ function _polishExternalFurnitureMaterials(root, type) {
                 next.map = surfaceProps.map;
             }
 
-            // Only tint if it's purely a color material (no map), to preserve original textures.
-            if (next.color && !hasMap) {
+            if (next.color) {
                 const brightness = (next.color.r + next.color.g + next.color.b) / 3;
-                if (brightness > 0.78) {
-                    next.color.lerp(accent, 0.4);
+                const max = Math.max(next.color.r, next.color.g, next.color.b);
+                const min = Math.min(next.color.r, next.color.g, next.color.b);
+                const saturation = max - min;
+
+                // Even with a texture map, Kenney models use a white base color and an atlas.
+                // We tint the base color so the texture inherits the accent.
+                if (saturation < 0.1) {
+                    next.color.lerp(accent, hasMap ? 0.35 : 0.85);
+                } else if (brightness > 0.78) {
+                    next.color.lerp(accent, hasMap ? 0.2 : 0.4);
                 } else if (_isNearBlack(next)) {
                     next.color.lerp(accent, 0.6);
                 } else {
@@ -1204,63 +1232,66 @@ export function createFurniture(type) {
 // ============================================================
 // POWER-UPS — glowing floating objects
 // ============================================================
+let powerUpSpriteTex = null;
+
 export function createPowerUp(type) {
     const group = new THREE.Group();
+    let meshColor = 0xffffff;
 
-    const colors = {
-        powerup_coffee: 0x8B4513,
-        powerup_clock: 0xf1c40f,
-        powerup_shield: 0x3498db,
-        powerup_beer: 0xe6a817,
-    };
-    const color = colors[type] || 0xffffff;
-
-    switch (type) {
-        case 'powerup_coffee':
-            const cup = cylinder(0.12, 0.1, 0.2, color);
-            cup.position.y = 0.3;
-            group.add(cup);
-            // Steam
-            const steam = sphere(0.06, 0xffffff, { transparent: true, opacity: 0.5 });
-            steam.position.y = 0.5;
-            group.add(steam);
-            break;
-
-        case 'powerup_clock':
-            const clockFace = cylinder(0.18, 0.18, 0.04, 0xecf0f1, 16);
-            clockFace.position.y = 0.3;
-            group.add(clockFace);
-            const clockFrame = cylinder(0.2, 0.2, 0.05, color, 16);
-            clockFrame.position.y = 0.3;
-            group.add(clockFrame);
-            break;
-
-        case 'powerup_shield':
-            const shield = sphere(0.2, color, { transparent: true, opacity: 0.7 });
-            shield.position.y = 0.3;
-            shield.scale.set(1, 1.3, 0.3);
-            group.add(shield);
-            break;
-
-        case 'powerup_beer':
-            const mug = cylinder(0.1, 0.1, 0.25, color);
-            mug.position.y = 0.25;
-            group.add(mug);
-            const foam = cylinder(0.11, 0.11, 0.06, 0xffffff);
-            foam.position.y = 0.4;
-            group.add(foam);
-            break;
-
-        default:
-            const orb = sphere(0.15, color, { emissive: color, emissiveIntensity: 0.3 });
-            orb.position.y = 0.3;
-            group.add(orb);
+    if (type === 'powerup_coffee') {
+        const cup = cylinder(0.2, 0.15, 0.4, 0xffffff);
+        cup.position.y = 0.4;
+        group.add(cup);
+        const liquid = cylinder(0.18, 0.18, 0.05, 0x4a2e1b);
+        liquid.position.y = 0.6;
+        group.add(liquid);
+        meshColor = 0x8B4513;
+    } else if (type === 'powerup_clock') {
+        const base = cylinder(0.3, 0.3, 0.1, 0xffffff);
+        base.rotation.x = Math.PI / 2;
+        base.position.y = 0.4;
+        group.add(base);
+        const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.3, 0.05, 8, 16),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, roughness: 0.3, metalness: 0.8 })
+        );
+        rim.position.y = 0.4;
+        group.add(rim);
+        const hand = box(0.04, 0.2, 0.04, 0x000000);
+        hand.position.set(0, 0.4, 0.05);
+        hand.rotation.z = -Math.PI / 4;
+        group.add(hand);
+        meshColor = 0xf1c40f;
+    } else if (type === 'powerup_shield') {
+        const s = cylinder(0.3, 0.3, 0.1, 0x3498db);
+        s.rotation.x = Math.PI / 2;
+        s.position.y = 0.4;
+        s.scale.set(1, 1.2, 1);
+        group.add(s);
+        const cross = box(0.1, 0.4, 0.15, 0xffffff);
+        cross.position.y = 0.4;
+        group.add(cross);
+        const cross2 = box(0.4, 0.1, 0.15, 0xffffff);
+        cross2.position.y = 0.4;
+        group.add(cross2);
+        meshColor = 0x3498db;
+    } else if (type === 'powerup_beer') {
+        const mug = cylinder(0.25, 0.25, 0.5, 0xe6a817);
+        mug.position.y = 0.4;
+        group.add(mug);
+        const foam = sphere(0.26, 0xffffff);
+        foam.position.y = 0.65;
+        group.add(foam);
+        const foam2 = sphere(0.15, 0xffffff);
+        foam2.position.set(0.15, 0.65, 0);
+        group.add(foam2);
+        meshColor = 0xe6a817;
     }
 
     // Glow ring
     const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.25, 0.3, 16),
-        new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+        new THREE.RingGeometry(0.35, 0.4, 16),
+        new THREE.MeshBasicMaterial({ color: meshColor, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.05;

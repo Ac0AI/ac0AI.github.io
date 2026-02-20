@@ -508,10 +508,29 @@ export class Game {
             }
         }
 
-        const hitBySheep = this.enemies.update(
+        const { hitPlayer: hitBySheep, roadkills } = this.enemies.update(
             dt, this.playerPos, this.currentLevel,
-            this.hasGracePeriod, this.powerups.hasShield, this.world
+            this.hasGracePeriod, this.powerups.hasShield, this.powerups.speedMultiplier > 1, this.world
         );
+
+        if (roadkills && roadkills.length > 0) {
+            roadkills.forEach(rk => {
+                this.audio.playSound('roadkill');
+
+                // Add points
+                let basePoints = rk.isBoss ? 500 : 50;
+                const comboMult = this.powerups.comboMultiplier;
+                const totalPoints = basePoints * comboMult;
+                this.score += totalPoints;
+
+                // Show text
+                let pointLabel = `VÄGMORD! +${totalPoints}`;
+                if (comboMult > 1) pointLabel += ` 🔥x${comboMult}`;
+
+                const screenPos = this._worldToScreen(rk.pos);
+                this.ui.showFloatingPoints(screenPos.x, screenPos.y - 80, pointLabel, 'mega');
+            });
+        }
 
         if (hitBySheep) {
             this.audio.playSound('sheep');
@@ -845,6 +864,9 @@ export class Game {
         this.state = 'GAME_OVER';
         this.audio.stopMusic();
 
+        // Play the "loouser" audio clip on game over!
+        this.audio.playSound('loouser');
+
         if (reason.includes('FÅR')) {
             this.audio.playSound('roadkill');
             this.effects.shake(300, 0.5);
@@ -862,12 +884,18 @@ export class Game {
         this.ui.spawnConfetti();
 
         if (this.currentLevel >= this.maxLevel) {
+            // Victory line
+            this.audio.playSound('recommend');
+
             // Victory!
             this.audio.playLevelJingle(this.currentLevel);
             this.state = 'VICTORY';
             this.audio.stopMusic();
             this.ui.showVictory(this.score);
         } else {
+            // Announcer voice line!
+            this.audio.playSound('animals');
+
             this.audio.playLevelJingle(this.currentLevel);
             this.state = 'LEVEL_TRANSITION';
             this.ui.showLevelComplete(this.currentLevel, timeBonus);

@@ -1,456 +1,819 @@
 {
   "models": [
     {
-      "id": "u_body_body_010_",
-      "file": "assets/models/game/u_body_body_010_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "base",
+      "file": "assets/models/3/Base.glb",
+      "tags": []
+    },
+    {
+      "id": "bathroom_sink",
+      "file": "assets/models/3/Bathroom Sink.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "bathroom_toilet_paper",
+      "file": "assets/models/3/Bathroom Toilet Paper.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "bathtub",
+      "file": "assets/models/3/Bathtub.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "bed_king",
+      "file": "assets/models/3/Bed King.glb",
+      "tags": [
+        "furniture",
+        "bed"
+      ]
+    },
+    {
+      "id": "bed_single",
+      "file": "assets/models/3/Bed Single.glb",
+      "tags": [
+        "furniture",
+        "bed"
+      ]
+    },
+    {
+      "id": "bench",
+      "file": "assets/models/3/Bench.glb",
+      "tags": []
+    },
+    {
+      "id": "box_b",
+      "file": "assets/models/3/Box B.glb",
+      "tags": []
+    },
+    {
+      "id": "box",
+      "file": "assets/models/3/Box.glb",
+      "tags": []
+    },
+    {
+      "id": "building_b",
+      "file": "assets/models/3/Building B.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-7lmept2icd",
+      "file": "assets/models/3/Building-7lMEpT2ICD.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-t3oyvk6veu",
+      "file": "assets/models/3/Building-T3oyvK6VEU.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-bbh2bg73qm",
+      "file": "assets/models/3/Building-bbH2Bg73qM.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-g15lpkh4li",
+      "file": "assets/models/3/Building-g15lpKh4li.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-otrsya6pan",
+      "file": "assets/models/3/Building-otRsYa6pan.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building-qohhglftam",
+      "file": "assets/models/3/Building-qOhhGLftam.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "building",
+      "file": "assets/models/3/Building.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "bunk_bed",
+      "file": "assets/models/3/Bunk Bed.glb",
+      "tags": [
+        "furniture",
+        "bed"
+      ]
+    },
+    {
+      "id": "bush",
+      "file": "assets/models/3/Bush.glb",
+      "tags": []
+    },
+    {
+      "id": "cactus",
+      "file": "assets/models/3/Cactus.glb",
+      "tags": [
+        "furniture",
+        "plant"
+      ]
+    },
+    {
+      "id": "car_hatchback",
+      "file": "assets/models/3/Car Hatchback.glb",
+      "tags": [
+        "vehicle"
+      ]
+    },
+    {
+      "id": "ceiling_light",
+      "file": "assets/models/3/Ceiling Light.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "chair-rlyhe93nne",
+      "file": "assets/models/3/Chair-Rlyhe93NNe.glb",
+      "tags": [
+        "furniture",
+        "chair"
+      ]
+    },
+    {
+      "id": "chair",
+      "file": "assets/models/3/Chair.glb",
+      "tags": [
+        "furniture",
+        "chair"
+      ]
+    },
+    {
+      "id": "column_round",
+      "file": "assets/models/3/Column Round.glb",
+      "tags": []
+    },
+    {
+      "id": "couch_large",
+      "file": "assets/models/3/Couch Large.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "couch_medium-mwgq94zhdz",
+      "file": "assets/models/3/Couch Medium-mWgQ94zhDZ.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "couch_medium",
+      "file": "assets/models/3/Couch Medium.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "couch_small-x9msj0gtb5",
+      "file": "assets/models/3/Couch Small-X9msj0gtb5.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "couch_small",
+      "file": "assets/models/3/Couch Small.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "cow",
+      "file": "assets/models/3/Cow.glb",
+      "tags": [
+        "animal"
+      ]
+    },
+    {
+      "id": "curtains_double",
+      "file": "assets/models/3/Curtains Double.glb",
+      "tags": []
+    },
+    {
+      "id": "dead_houseplant",
+      "file": "assets/models/3/Dead Houseplant.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "door_double",
+      "file": "assets/models/3/Door Double.glb",
+      "tags": []
+    },
+    {
+      "id": "door-8it1hh1oru",
+      "file": "assets/models/3/Door-8it1hH1oRu.glb",
+      "tags": []
+    },
+    {
+      "id": "door-kgt4ztckrm",
+      "file": "assets/models/3/Door-KGt4ztcKrM.glb",
+      "tags": []
+    },
+    {
+      "id": "door-li93wgnjys",
+      "file": "assets/models/3/Door-LI93WgnjyS.glb",
+      "tags": []
+    },
+    {
+      "id": "door-atrxvw0q9n",
+      "file": "assets/models/3/Door-atrxVW0q9N.glb",
+      "tags": []
+    },
+    {
+      "id": "door-b0aifzp6vl",
+      "file": "assets/models/3/Door-b0AIfzp6VL.glb",
+      "tags": []
+    },
+    {
+      "id": "door-ihxwsn12p1",
+      "file": "assets/models/3/Door-ihXwSN12P1.glb",
+      "tags": []
+    },
+    {
+      "id": "door-xufnanlzfe",
+      "file": "assets/models/3/Door-xuFNaNLzfE.glb",
+      "tags": []
+    },
+    {
+      "id": "door",
+      "file": "assets/models/3/Door.glb",
+      "tags": []
+    },
+    {
+      "id": "drawer-8xzqezl2w3",
+      "file": "assets/models/3/Drawer-8xZQEZL2w3.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "drawer-g1h0wnchqf",
+      "file": "assets/models/3/Drawer-G1H0wnCHQf.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "drawer-n3eri89oeo",
+      "file": "assets/models/3/Drawer-N3ERi89OeO.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "drawer-t4udbyp90c",
+      "file": "assets/models/3/Drawer-T4uDbyP90C.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "drawer",
+      "file": "assets/models/3/Drawer.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "dumpster",
+      "file": "assets/models/3/Dumpster.glb",
+      "tags": []
+    },
+    {
+      "id": "fire_hydrant",
+      "file": "assets/models/3/Fire Hydrant.glb",
+      "tags": []
+    },
+    {
+      "id": "fireplace",
+      "file": "assets/models/3/Fireplace.glb",
+      "tags": []
+    },
+    {
+      "id": "horse",
+      "file": "assets/models/3/Horse.glb",
+      "tags": [
+        "animal"
+      ]
+    },
+    {
+      "id": "houseplant-iblx2jz90o",
+      "file": "assets/models/3/Houseplant-IBLX2Jz90O.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "houseplant-vtjh4irl4w",
+      "file": "assets/models/3/Houseplant-VtJh4Irl4w.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "houseplant-bfloqiv5up",
+      "file": "assets/models/3/Houseplant-bfLOqIV5uP.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "houseplant-dveij0xnpx",
+      "file": "assets/models/3/Houseplant-dveIJ0xNpX.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "houseplant-f6gpjbegg0",
+      "file": "assets/models/3/Houseplant-f6GPjbEgg0.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "houseplant",
+      "file": "assets/models/3/Houseplant.glb",
+      "tags": [
+        "furniture",
+        "plant",
+        "building"
+      ]
+    },
+    {
+      "id": "kitchen_fridge",
+      "file": "assets/models/3/Kitchen Fridge.glb",
+      "tags": [
+        "furniture",
+        "fridge"
+      ]
+    },
+    {
+      "id": "kitchen_sink",
+      "file": "assets/models/3/Kitchen Sink.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "l_couch",
+      "file": "assets/models/3/L Couch.glb",
+      "tags": [
+        "furniture",
+        "sofa"
+      ]
+    },
+    {
+      "id": "lamp",
+      "file": "assets/models/3/Lamp.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_ceiling_single",
+      "file": "assets/models/3/Light Ceiling Single.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_ceiling-nnlnaidjih",
+      "file": "assets/models/3/Light Ceiling-NNlnaiDJIh.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_ceiling-tooljdo5fi",
+      "file": "assets/models/3/Light Ceiling-ToOLJDO5FI.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_ceiling",
+      "file": "assets/models/3/Light Ceiling.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_chandelier",
+      "file": "assets/models/3/Light Chandelier.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_cube-gjpaleplcy",
+      "file": "assets/models/3/Light Cube-gJpALEpLcy.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_cube",
+      "file": "assets/models/3/Light Cube.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_desk",
+      "file": "assets/models/3/Light Desk.glb",
+      "tags": [
+        "furniture",
+        "table",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_floor-ebqtooeh43",
+      "file": "assets/models/3/Light Floor-eBQtooeh43.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_floor",
+      "file": "assets/models/3/Light Floor.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_icosahedron",
+      "file": "assets/models/3/Light Icosahedron.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "light_stand",
+      "file": "assets/models/3/Light Stand.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "llama",
+      "file": "assets/models/3/Llama.glb",
+      "tags": [
+        "animal"
+      ]
+    },
+    {
+      "id": "man",
+      "file": "assets/models/3/Man.glb",
       "tags": [
         "character"
       ]
     },
     {
-      "id": "u_body_body_010_static",
-      "file": "assets/models/game/u_body_body_010_static.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "character"
-      ]
+      "id": "night_stand-08s1j15jcx",
+      "file": "assets/models/3/Night Stand-08S1j15Jcx.glb",
+      "tags": []
     },
     {
-      "id": "u_building_eco_building_terrace_",
-      "file": "assets/models/game/u_building_eco_building_terrace_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "building",
-        "environment"
-      ]
+      "id": "night_stand-7cobkfclnv",
+      "file": "assets/models/3/Night Stand-7cobkfclNv.glb",
+      "tags": []
     },
     {
-      "id": "u_dog_dog_001_",
-      "file": "assets/models/game/u_dog_dog_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "night_stand",
+      "file": "assets/models/3/Night Stand.glb",
+      "tags": []
+    },
+    {
+      "id": "oven",
+      "file": "assets/models/3/Oven.glb",
+      "tags": []
+    },
+    {
+      "id": "pig",
+      "file": "assets/models/3/Pig.glb",
       "tags": [
-        "character",
         "animal"
       ]
     },
     {
-      "id": "u_dog_dog_001_static",
-      "file": "assets/models/game/u_dog_dog_001_static.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "police_car",
+      "file": "assets/models/3/Police Car.glb",
       "tags": [
-        "character",
+        "vehicle"
+      ]
+    },
+    {
+      "id": "pug",
+      "file": "assets/models/3/Pug.glb",
+      "tags": [
         "animal"
       ]
     },
     {
-      "id": "u_furniture_air_hockey_001_",
-      "file": "assets/models/game/u_furniture_air_hockey_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "road_bits",
+      "file": "assets/models/3/Road Bits.glb",
+      "tags": []
+    },
+    {
+      "id": "rocks",
+      "file": "assets/models/3/Rocks.glb",
+      "tags": []
+    },
+    {
+      "id": "round_rug",
+      "file": "assets/models/3/Round Rug.glb",
+      "tags": [
+        "furniture",
+        "rug"
+      ]
+    },
+    {
+      "id": "rug",
+      "file": "assets/models/3/Rug.glb",
+      "tags": [
+        "furniture",
+        "rug"
+      ]
+    },
+    {
+      "id": "sheep",
+      "file": "assets/models/3/Sheep.glb",
+      "tags": [
+        "animal"
+      ]
+    },
+    {
+      "id": "shelf_large",
+      "file": "assets/models/3/Shelf Large.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "shelf_small-tfdguv2rye",
+      "file": "assets/models/3/Shelf Small-TfdgUV2RYe.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "shelf_small",
+      "file": "assets/models/3/Shelf Small.glb",
+      "tags": [
+        "furniture",
+        "bookshelf"
+      ]
+    },
+    {
+      "id": "square_plate",
+      "file": "assets/models/3/Square Plate.glb",
       "tags": [
         "furniture"
       ]
     },
     {
-      "id": "u_furniture_bathroom_item_001_",
-      "file": "assets/models/game/u_furniture_bathroom_item_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_bed_001_",
-      "file": "assets/models/game/u_furniture_bed_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_box_001_",
-      "file": "assets/models/game/u_furniture_box_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_camera_001_",
-      "file": "assets/models/game/u_furniture_camera_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_closet_001_",
-      "file": "assets/models/game/u_furniture_closet_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_closet_002_",
-      "file": "assets/models/game/u_furniture_closet_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_clothes_001_",
-      "file": "assets/models/game/u_furniture_clothes_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_clothes_002_",
-      "file": "assets/models/game/u_furniture_clothes_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_coffee_machine_001_",
-      "file": "assets/models/game/u_furniture_coffee_machine_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_coffee_table_001_",
-      "file": "assets/models/game/u_furniture_coffee_table_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_dish_001_",
-      "file": "assets/models/game/u_furniture_dish_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_dish_002_",
-      "file": "assets/models/game/u_furniture_dish_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_door_001_",
-      "file": "assets/models/game/u_furniture_door_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_door_frame_001_",
-      "file": "assets/models/game/u_furniture_door_frame_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_dresser_001_",
-      "file": "assets/models/game/u_furniture_dresser_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_drink_001_",
-      "file": "assets/models/game/u_furniture_drink_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_drink_002_",
-      "file": "assets/models/game/u_furniture_drink_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_dumbbell_001_",
-      "file": "assets/models/game/u_furniture_dumbbell_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_dumbbell_002_",
-      "file": "assets/models/game/u_furniture_dumbbell_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_flower_001_",
-      "file": "assets/models/game/u_furniture_flower_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_fridge_001_",
-      "file": "assets/models/game/u_furniture_fridge_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_ketchup_001_",
-      "file": "assets/models/game/u_furniture_ketchup_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_kitchen_chair_001_",
-      "file": "assets/models/game/u_furniture_kitchen_chair_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_kitchen_sink_001_",
-      "file": "assets/models/game/u_furniture_kitchen_sink_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_kitchen_table_001_",
-      "file": "assets/models/game/u_furniture_kitchen_table_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_lamp_001_",
-      "file": "assets/models/game/u_furniture_lamp_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_lamp_002_",
-      "file": "assets/models/game/u_furniture_lamp_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_lounge_chair_001_",
-      "file": "assets/models/game/u_furniture_lounge_chair_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_microwave_oven_001_",
-      "file": "assets/models/game/u_furniture_microwave_oven_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_musical_instrument_001_",
-      "file": "assets/models/game/u_furniture_musical_instrument_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_office_table_001_",
-      "file": "assets/models/game/u_furniture_office_table_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_scratching_post_001_",
-      "file": "assets/models/game/u_furniture_scratching_post_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_sofa_001_",
-      "file": "assets/models/game/u_furniture_sofa_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_toy_001_",
-      "file": "assets/models/game/u_furniture_toy_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_toy_002_",
-      "file": "assets/models/game/u_furniture_toy_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_training_item_001_",
-      "file": "assets/models/game/u_furniture_training_item_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_training_item_002_",
-      "file": "assets/models/game/u_furniture_training_item_002_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_tv_wall_001_",
-      "file": "assets/models/game/u_furniture_tv_wall_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_furniture_washing_machine_001_",
-      "file": "assets/models/game/u_furniture_washing_machine_001_.glb",
-      "scale": 1,
-      "yOffset": 0,
-      "tags": [
-        "furniture"
-      ]
-    },
-    {
-      "id": "u_van_van_",
-      "file": "assets/models/game/u_van_van_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "stationwagon",
+      "file": "assets/models/3/Stationwagon.glb",
       "tags": [
         "vehicle"
       ]
     },
     {
-      "id": "u_van_van_wheel_front_left_",
-      "file": "assets/models/game/u_van_van_wheel_front_left_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "stool",
+      "file": "assets/models/3/Stool.glb",
+      "tags": [
+        "furniture",
+        "chair"
+      ]
+    },
+    {
+      "id": "streetlight",
+      "file": "assets/models/3/Streetlight.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "table_lamp",
+      "file": "assets/models/3/Table Lamp.glb",
+      "tags": [
+        "furniture",
+        "table",
+        "lamp"
+      ]
+    },
+    {
+      "id": "table_round_large",
+      "file": "assets/models/3/Table Round Large.glb",
+      "tags": [
+        "furniture",
+        "table"
+      ]
+    },
+    {
+      "id": "table_round_small-57w671wvs2",
+      "file": "assets/models/3/Table Round Small-57W671WvS2.glb",
+      "tags": [
+        "furniture",
+        "table"
+      ]
+    },
+    {
+      "id": "table_round_small",
+      "file": "assets/models/3/Table Round Small.glb",
+      "tags": [
+        "furniture",
+        "table"
+      ]
+    },
+    {
+      "id": "taxi",
+      "file": "assets/models/3/Taxi.glb",
       "tags": [
         "vehicle"
       ]
     },
     {
-      "id": "u_van_van_wheel_front_right_",
-      "file": "assets/models/game/u_van_van_wheel_front_right_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "toilet_paper_stack",
+      "file": "assets/models/3/Toilet Paper stack.glb",
       "tags": [
-        "vehicle"
+        "furniture"
       ]
     },
     {
-      "id": "u_van_van_wheel_rear_left_",
-      "file": "assets/models/game/u_van_van_wheel_rear_left_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "toilet",
+      "file": "assets/models/3/Toilet.glb",
       "tags": [
-        "vehicle"
+        "furniture"
       ]
     },
     {
-      "id": "u_van_van_wheel_rear_right_",
-      "file": "assets/models/game/u_van_van_wheel_rear_right_.glb",
-      "scale": 1,
-      "yOffset": 0,
+      "id": "towel_rack",
+      "file": "assets/models/3/Towel Rack.glb",
+      "tags": []
+    },
+    {
+      "id": "traffic_light-q6k7izx6yd",
+      "file": "assets/models/3/Traffic light-Q6k7Izx6YD.glb",
       "tags": [
-        "vehicle"
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "traffic_light",
+      "file": "assets/models/3/Traffic light.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "trafficlight_b",
+      "file": "assets/models/3/Trafficlight B.glb",
+      "tags": [
+        "furniture",
+        "lamp"
+      ]
+    },
+    {
+      "id": "trashcan_large",
+      "file": "assets/models/3/Trashcan Large.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "trashcan_small-zwytk2smba",
+      "file": "assets/models/3/Trashcan Small-ZWYTK2SmBA.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "trashcan_small",
+      "file": "assets/models/3/Trashcan Small.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "trashcan-xswahu252t",
+      "file": "assets/models/3/Trashcan-XSwahu252t.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "trashcan",
+      "file": "assets/models/3/Trashcan.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "washing_machine",
+      "file": "assets/models/3/Washing Machine.glb",
+      "tags": [
+        "furniture"
+      ]
+    },
+    {
+      "id": "watertower",
+      "file": "assets/models/3/Watertower.glb",
+      "tags": [
+        "building"
+      ]
+    },
+    {
+      "id": "window_large",
+      "file": "assets/models/3/Window Large.glb",
+      "tags": []
+    },
+    {
+      "id": "window_round",
+      "file": "assets/models/3/Window Round.glb",
+      "tags": []
+    },
+    {
+      "id": "window_small",
+      "file": "assets/models/3/Window Small.glb",
+      "tags": []
+    },
+    {
+      "id": "zebra",
+      "file": "assets/models/3/Zebra.glb",
+      "tags": [
+        "animal"
       ]
     }
   ]

@@ -239,7 +239,7 @@ class ExternalModelCatalog {
 
         const hints = typeToHints[type] || [];
         const candidates = hints.length > 0
-            ? this.furniture.filter(m => includesAny(m.id, hints))
+            ? this.furniture.filter(m => includesAny(m.id, hints) || hints.some(h => hasTag(m, h)))
             : [];
         const source = candidates.length > 0 ? candidates : this.furniture;
         this._furnitureSourceCache.set(type, source);

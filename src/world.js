@@ -91,6 +91,7 @@ export class World {
             vertexColors: true,
             ...getSurfaceMaterialProps(this.texturePack, 'grass')
         });
+
         this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.groundMesh.receiveShadow = true;
@@ -543,6 +544,8 @@ export class World {
                 colorAttr.setXYZ(i, c.r, c.g, c.b);
             }
             colorAttr.needsUpdate = true;
+            this.groundMesh.material.map = null;
+            this.groundMesh.material.needsUpdate = true;
         }
         if (this.ambientLight) {
             this.ambientLight.color.setHex(theme.ambient);
