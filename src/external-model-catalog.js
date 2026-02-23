@@ -92,16 +92,35 @@ class ExternalModelCatalog {
                 this.animalIds.sheep = [this.roleId.sheep];
             }
 
-            // Warm only hero models up-front; furniture is lazy-loaded for lower startup/memory cost.
-            const idSet = new Set([
+            const coreRoleIds = [
                 this.roleId.player,
                 this.roleId.truck,
                 this.roleId.building,
                 this.roleId.dog,
                 this.roleId.sheep,
-            ].filter(Boolean));
+            ];
+            if (coreRoleIds.some(id => !id)) {
+                console.warn('External model catalog missing one or more core role ids.');
+                return;
+            }
+
+            const curatedFurnitureIds = Object.values(CURATED_FURNITURE_BY_TYPE)
+                .flat()
+                .filter(Boolean);
+            const idSet = new Set([
+                ...coreRoleIds,
+                ...this.animalIds.dog,
+                ...this.animalIds.sheep,
+                ...curatedFurnitureIds,
+            ].filter(id => this.modelById.has(id)));
 
             await Promise.all([...idSet].map(id => this._loadById(id)));
+
+            const missingCoreTemplate = coreRoleIds.some(id => !this.templates.has(id));
+            if (missingCoreTemplate) {
+                console.warn('External model catalog could not load one or more core role templates.');
+                return;
+            }
             this._ready = true;
         } catch (err) {
             console.warn('External model catalog failed to load:', err);

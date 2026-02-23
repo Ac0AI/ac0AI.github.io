@@ -27,7 +27,11 @@ const quality = {
 };
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({
+    antialias: false, // FXAA pass handles edge smoothing at lower GPU cost.
+    alpha: false,
+    powerPreference: 'high-performance'
+});
 let activePixelRatio = Math.min(window.devicePixelRatio, quality.maxPixelRatio);
 renderer.setPixelRatio(activePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -74,13 +78,17 @@ if (typeof window !== 'undefined') {
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    quality.lowPower ? postfx.bloom.strength.lowPower : postfx.bloom.strength.normal,
-    quality.lowPower ? postfx.bloom.radius.lowPower : postfx.bloom.radius.normal,
-    quality.lowPower ? postfx.bloom.threshold.lowPower : postfx.bloom.threshold.normal
-);
-composer.addPass(bloomPass);
+const bloomPass = quality.lowPower
+    ? null
+    : new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        postfx.bloom.strength.normal,
+        postfx.bloom.radius.normal,
+        postfx.bloom.threshold.normal
+    );
+if (bloomPass) {
+    composer.addPass(bloomPass);
+}
 
 const fxaaPass = new ShaderPass(FXAAShader);
 fxaaPass.material.uniforms.resolution.value.set(
@@ -98,7 +106,7 @@ let degradedQuality = false;
 function updatePostProcessSize(width, height) {
     renderer.setSize(width, height);
     composer.setSize(width, height);
-    bloomPass.setSize(width, height);
+    if (bloomPass) bloomPass.setSize(width, height);
     fxaaPass.material.uniforms.resolution.value.set(
         1 / (width * activePixelRatio),
         1 / (height * activePixelRatio)
@@ -124,7 +132,7 @@ function animate(time) {
                 degradedQuality = true;
                 activePixelRatio = Math.max(1, activePixelRatio - postfx.adaptive.pixelRatioStep);
                 renderer.setPixelRatio(activePixelRatio);
-                bloomPass.strength *= postfx.adaptive.bloomDegradeScale;
+                if (bloomPass) bloomPass.strength *= postfx.adaptive.bloomDegradeScale;
                 updatePostProcessSize(window.innerWidth, window.innerHeight);
             }
             perfAcc = 0;

@@ -114,7 +114,7 @@ export class UIManager {
         // Enter key for starting/restarting
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                if (!this.el.startScreen.classList.contains('hidden') && this.onStart) {
+                if (!this.el.startScreen.classList.contains('hidden') && !this.el.startBtn.disabled && this.onStart) {
                     this.onStart();
                 } else if (!this.el.levelScreen.classList.contains('hidden') && this.onNextLevel) {
                     this.onNextLevel();
@@ -153,6 +153,15 @@ export class UIManager {
     }
 
     // === SCREEN MANAGEMENT ===
+    setStartButtonState(enabled, label = null) {
+        this.el.startBtn.disabled = !enabled;
+        this.el.startBtn.style.opacity = enabled ? '1' : '0.65';
+        this.el.startBtn.style.cursor = enabled ? 'pointer' : 'wait';
+        if (label) {
+            this.el.startBtn.textContent = label;
+        }
+    }
+
     showStartScreen() {
         this._hideAllScreens();
         this.el.startScreen.classList.remove('hidden');

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { createTruck, createHouse } from './models.js';
 import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { LIGHTING_PRESETS, VISUAL_PROFILE } from './visual-profile.js';
-import { externalModelCatalog } from './external-model-catalog.js';
 
 const LIGHTING_PROFILE = LIGHTING_PRESETS[VISUAL_PROFILE] || LIGHTING_PRESETS.premium_arcade_v2;
 
@@ -151,24 +150,20 @@ export class World {
 
         // Truck
         this.truckModel = createTruck();
+        if (!this.truckModel?.userData?.externalModel) {
+            throw new Error('External truck model unavailable');
+        }
         this.truckModel.position.copy(this.truckPos);
         this.truckModel.rotation.y = Math.PI / 4;
-        if (!this.truckModel?.userData?.externalModel && !externalModelCatalog.ready) {
-            // Avoid visual flash from procedural fallback before external model upgrade.
-            this.truckModel.visible = false;
-            this.truckModel.userData.deferRevealUntilExternal = true;
-        }
         this.scene.add(this.truckModel);
 
         // House
         this.houseModel = createHouse();
+        if (!this.houseModel?.userData?.externalModel) {
+            throw new Error('External house model unavailable');
+        }
         this.houseModel.position.copy(this.housePos);
         this.houseModel.rotation.y = -Math.PI / 6;
-        if (!this.houseModel?.userData?.externalModel && !externalModelCatalog.ready) {
-            // Avoid visual flash from procedural fallback before external model upgrade.
-            this.houseModel.visible = false;
-            this.houseModel.userData.deferRevealUntilExternal = true;
-        }
         this.scene.add(this.houseModel);
 
         // Zone indicators (subtle rings on ground)

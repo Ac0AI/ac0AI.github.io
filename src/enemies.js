@@ -41,6 +41,7 @@ export class EnemyManager {
 
             const sheepScale = 0.8 + (currentLevel - 1) * 0.3;
             const model = createSheep(sheepScale);
+            if (!model) continue;
             model.position.set(sx, 0, sz);
             this.scene.add(model);
 
@@ -81,6 +82,7 @@ export class EnemyManager {
         }
 
         const model = createSheep(2.0);
+        if (!model) return;
         model.position.set(bx, 0, bz);
         // Tint boss red (guard against imported models with material arrays / non-color materials)
         model.traverse((child) => {

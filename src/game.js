@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import {
     createPlayer,
-    createTruck,
-    createHouse,
     createFurniture,
     EXTERNAL_FURNITURE_ENABLED
 } from './models.js';
@@ -33,8 +31,6 @@ const POINT_VALUES = {
 const FURNITURE_TYPES = CURATED_FURNITURE_TYPES.length > 0
     ? [...CURATED_FURNITURE_TYPES]
     : ['box', 'sofa', 'lamp', 'plant', 'chair', 'fridge', 'table', 'bookshelf', 'microwave'];
-const PROCEDURAL_FURNITURE_SCALE = 1.3;
-const PROCEDURAL_CARRY_SCALE_MULT = 1.5 / PROCEDURAL_FURNITURE_SCALE;
 const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;
 const FURNITURE_SPAWN_INTERVAL_SEC = 0.32;
 const GOLD_EMISSIVE_COLOR = new THREE.Color(0xFFD700);
@@ -84,7 +80,7 @@ export class Game {
         };
 
         // Furniture
-        this.furnitureItems = []; // { model, type, isGold, baseScale }
+        this.furnitureItems = []; // { model, type, isGold }
         this.carriedItem = null;
         this._pendingFurnitureSpawns = 0;
         this._furnitureSpawnAcc = 0;
@@ -96,55 +92,72 @@ export class Game {
         this._dogSpawnAcc = 0;
         this._dogHasSpawned = false;
         this._difficultyAcc = 0;
-        this._externalUpgradeQueued = false;
-        this._externalUpgradeApplied = false;
-        this._furnitureUpgradeTimer = null;
-        this._furnitureUpgradeAttemptsLeft = 0;
         this._timeouts = new Set();
+        this._assetsReady = false;
+        this._setupPromise = null;
 
         // Setup
-        this._setup();
+        this._setupPromise = this._setup();
     }
 
-    _setup() {
+    _buildCoreScene() {
+        // Build world
+        this.world.create(1);
+
+        // Create player
+        this.playerModel = createPlayer();
+        if (!this.playerModel?.userData?.externalModel) {
+            throw new Error('External player model unavailable');
+        }
+        this.playerModel.position.set(0, 0, 0);
+        this.scene.add(this.playerModel);
+        this._resetPlayerAnimationState();
+        this._createPlayerPresentation();
+    }
+
+    async _setup() {
         // UI callbacks
         this.ui.onStart = () => this.startGame();
         this.ui.onRestart = () => this.restartGame();
         this.ui.onNextLevel = () => this.nextLevel();
 
-        try {
-            // Build world
-            this.world.create(1);
-
-            // Create player
-            this.playerModel = createPlayer();
-            this.playerModel.position.set(0, 0, 0);
-            this.scene.add(this.playerModel);
-            this._resetPlayerAnimationState();
-            this._createPlayerPresentation();
-        } catch (err) {
-            console.error('Game setup failed, keeping menu interactive:', err);
-        }
-
-        // Show start screen
+        // Show start screen while models load.
         this.ui.showStartScreen();
+        this.ui.setStartButtonState(false, '⏳ LADDAR 3D...');
 
-        // Swap in imported Unity models as soon as catalog finishes loading.
-        this._queueExternalModelUpgrade();
+        try {
+            await externalModelCatalog.whenReady();
+            if (!externalModelCatalog.ready) {
+                throw new Error('External model catalog not ready');
+            }
+
+            this._buildCoreScene();
+            this._assetsReady = true;
+            this.ui.setStartButtonState(true, '▶ STARTA SPELET');
+        } catch (err) {
+            this._assetsReady = false;
+            this._clearAll();
+            this.ui.setStartButtonState(false, '⚠️ KUNDE INTE LADDA MODELLER');
+            console.error('Game setup failed, start remains disabled:', err);
+        }
     }
 
-    startGame() {
+    async startGame() {
         this._clearManagedTimeouts();
+
+        if (!this._assetsReady) {
+            if (this._setupPromise) {
+                await this._setupPromise;
+            }
+            if (!this._assetsReady) {
+                return;
+            }
+        }
 
         if (!this.playerModel || !this.world.truckModel || !this.world.houseModel) {
             try {
                 this._clearAll();
-                this.world.create(1);
-                this.playerModel = createPlayer();
-                this.playerModel.position.set(0, 0, 0);
-                this.scene.add(this.playerModel);
-                this._resetPlayerAnimationState();
-                this._createPlayerPresentation();
+                this._buildCoreScene();
             } catch (err) {
                 console.error('Failed to recover world on start:', err);
                 return;
@@ -195,20 +208,20 @@ export class Game {
             this.itemsDelivered, this.levelGoal, 0, 1);
     }
 
-    restartGame() {
+    async restartGame() {
         this.audio.stopAll();
         // Remove all 3D objects and rebuild
         this._clearAll();
-        this._setup();
-        this.startGame();
+        this._assetsReady = false;
+        this._setupPromise = this._setup();
+        await this._setupPromise;
+        if (this._assetsReady) {
+            await this.startGame();
+        }
     }
 
     _clearAll() {
         this._clearManagedTimeouts();
-        if (this._furnitureUpgradeTimer) {
-            clearInterval(this._furnitureUpgradeTimer);
-            this._furnitureUpgradeTimer = null;
-        }
         this.enemies.clearAll();
         this.powerups.clearAll();
         this._clearFurniture();
@@ -347,14 +360,25 @@ export class Game {
     }
 
     _spawnOneFurniture() {
-        const type = FURNITURE_TYPES[Math.floor(Math.random() * FURNITURE_TYPES.length)];
-        const model = createFurniture(type);
-        if (!model) {
-            return false;
+        if (!EXTERNAL_FURNITURE_ENABLED || FURNITURE_TYPES.length === 0) return false;
+
+        const pool = [...FURNITURE_TYPES];
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
         }
-        if (EXTERNAL_FURNITURE_ENABLED && externalModelCatalog.ready && !model?.userData?.externalModel) {
-            this._scheduleFurnitureUpgradeRetries();
+
+        let type = null;
+        let model = null;
+        for (const candidate of pool) {
+            const next = createFurniture(candidate);
+            if (next?.userData?.externalModel) {
+                type = candidate;
+                model = next;
+                break;
+            }
         }
+        if (!model || !type) return false;
 
         // Spawn in a ring around truck (outside truck collision radius)
         const truckPos = this.world.truckPos;
@@ -363,9 +387,6 @@ export class Game {
         const rx = truckPos.x + Math.cos(angle) * dist;
         const rz = truckPos.z + Math.sin(angle) * dist;
         model.position.set(rx, 0, rz);
-        if (!model?.userData?.externalModel) {
-            model.scale.set(PROCEDURAL_FURNITURE_SCALE, PROCEDURAL_FURNITURE_SCALE, PROCEDURAL_FURNITURE_SCALE);  // Slightly larger for visibility
-        }
         this.scene.add(model);
 
         const isGold = Math.random() < 0.1;
@@ -373,7 +394,6 @@ export class Game {
             model,
             type,
             isGold,
-            baseScale: model?.userData?.externalModel ? null : model.scale.clone(),
         };
 
         if (isGold) {
@@ -393,132 +413,6 @@ export class Game {
 
         this.furnitureItems.push(item);
         return true;
-    }
-
-    _queueExternalModelUpgrade() {
-        if (this._externalUpgradeQueued || this._externalUpgradeApplied) return;
-        this._externalUpgradeQueued = true;
-
-        // If external assets are slow or unavailable, reveal deferred fallback models.
-        const revealFallbackLater = this._setManagedTimeout(() => {
-            if (!this._externalUpgradeApplied) {
-                this._revealDeferredWorldFallbacks();
-            }
-        }, 2200);
-
-        externalModelCatalog.whenReady().then(() => {
-            clearTimeout(revealFallbackLater);
-            this._timeouts.delete(revealFallbackLater);
-            this._externalUpgradeQueued = false;
-            if (externalModelCatalog.ready) {
-                this._applyExternalModelUpgrade();
-            } else {
-                this._revealDeferredWorldFallbacks();
-            }
-        });
-    }
-
-    _revealDeferredWorldFallbacks() {
-        const models = [this.world?.truckModel, this.world?.houseModel];
-        models.forEach((model) => {
-            if (!model?.userData?.deferRevealUntilExternal) return;
-            model.visible = true;
-            delete model.userData.deferRevealUntilExternal;
-        });
-    }
-
-    _replaceWorldModel(key, factory, fallbackPosition, fallbackRotationY) {
-        const next = factory();
-        if (!next?.userData?.externalModel) return false;
-
-        const current = this.world[key];
-        const pos = current ? current.position.clone() : fallbackPosition.clone();
-        const rotY = current ? current.rotation.y : fallbackRotationY;
-
-        if (current) this.scene.remove(current);
-        this.world[key] = next;
-        this.world[key].position.copy(pos);
-        this.world[key].rotation.y = rotY;
-        this.scene.add(this.world[key]);
-        return true;
-    }
-
-    _upgradeExistingFurnitureModels() {
-        if (!EXTERNAL_FURNITURE_ENABLED) return false;
-        if (this.furnitureItems.length === 0) return false;
-
-        let anyReplaced = false;
-        this.furnitureItems.forEach((item) => {
-            const next = createFurniture(item.type);
-            if (!next?.userData?.externalModel) return;
-
-            next.position.copy(item.model.position);
-            next.rotation.copy(item.model.rotation);
-            this.scene.remove(item.model);
-            this.scene.add(next);
-            item.model = next;
-            item.baseScale = null;
-            if (item.isGold) this._applyGoldTint(item.model);
-            anyReplaced = true;
-        });
-
-        if (this.carriedItem) {
-            this.carriedItem.model.position.x = this.playerPos.x;
-            this.carriedItem.model.position.z = this.playerPos.z;
-            this.carriedItem.model.position.y = 1.8 + this.effects.getCarryOffset();
-        }
-
-        return anyReplaced;
-    }
-
-    _scheduleFurnitureUpgradeRetries(maxAttempts = 10) {
-        this._furnitureUpgradeAttemptsLeft = Math.max(this._furnitureUpgradeAttemptsLeft, maxAttempts);
-        if (this._furnitureUpgradeTimer) return;
-
-        this._furnitureUpgradeTimer = setInterval(() => {
-            if (this._furnitureUpgradeAttemptsLeft <= 0 || !externalModelCatalog.ready) {
-                clearInterval(this._furnitureUpgradeTimer);
-                this._furnitureUpgradeTimer = null;
-                return;
-            }
-            this._furnitureUpgradeAttemptsLeft--;
-            this._upgradeExistingFurnitureModels();
-
-            const pendingFallbacks = this.furnitureItems.some(item => !item.model?.userData?.externalModel);
-            if (!pendingFallbacks) {
-                clearInterval(this._furnitureUpgradeTimer);
-                this._furnitureUpgradeTimer = null;
-            }
-        }, 800);
-    }
-
-    _applyExternalModelUpgrade() {
-        if (this._externalUpgradeApplied || !externalModelCatalog.ready) return;
-
-        let changed = false;
-
-        const nextPlayer = createPlayer();
-        if (nextPlayer?.userData?.externalModel && this.playerModel) {
-            nextPlayer.position.copy(this.playerModel.position);
-            nextPlayer.rotation.copy(this.playerModel.rotation);
-            this.scene.remove(this.playerModel);
-            this.playerModel = nextPlayer;
-            this.scene.add(this.playerModel);
-            this._resetPlayerAnimationState();
-            changed = true;
-        }
-
-        changed = this._replaceWorldModel('truckModel', createTruck, this.world.truckPos, Math.PI / 4) || changed;
-        changed = this._replaceWorldModel('houseModel', createHouse, this.world.housePos, -Math.PI / 6) || changed;
-        if (EXTERNAL_FURNITURE_ENABLED) {
-            changed = this._upgradeExistingFurnitureModels() || changed;
-            this._scheduleFurnitureUpgradeRetries(12);
-        }
-
-        if (changed) {
-            this._externalUpgradeApplied = true;
-        }
-        this._revealDeferredWorldFallbacks();
     }
 
     // ============================================================
@@ -837,13 +731,6 @@ export class Game {
                 // Drop on ground — it will slide back to truck area after 10s
                 this.audio.playSynth('drop');
                 this.carriedItem.model.position.y = 0;
-                if (this.carriedItem.model?.userData?.externalModel) {
-                    // External Unity assets can break if their scale is reassigned at runtime.
-                } else if (this.carriedItem.baseScale) {
-                    this.carriedItem.model.scale.copy(this.carriedItem.baseScale);
-                } else {
-                    this.carriedItem.model.scale.set(1, 1, 1);
-                }
                 const droppedItem = this.carriedItem;
                 this.carriedItem = null;
                 this._pulsePlayerAction('drop');
@@ -878,17 +765,6 @@ export class Game {
 
             if (closest) {
                 this.carriedItem = closest;
-                if (this.carriedItem.model?.userData?.externalModel) {
-                    // Keep original scale untouched for imported assets.
-                } else if (this.carriedItem.baseScale) {
-                    this.carriedItem.model.scale.set(
-                        this.carriedItem.baseScale.x * PROCEDURAL_CARRY_SCALE_MULT,
-                        this.carriedItem.baseScale.y * PROCEDURAL_CARRY_SCALE_MULT,
-                        this.carriedItem.baseScale.z * PROCEDURAL_CARRY_SCALE_MULT
-                    );
-                } else {
-                    this.carriedItem.model.scale.set(1.5, 1.5, 1.5);
-                }
                 this.audio.playSynth('pickup');
                 this._pulsePlayerAction('pickup');
             }
