@@ -98,15 +98,13 @@ class ExternalModelCatalog {
                 this.roleId.sheep
             ]);
 
-            const coreRoleIds = [
+            const essentialRoleIds = [
                 this.roleId.player,
                 this.roleId.truck,
                 this.roleId.building,
-                this.roleId.dog,
-                this.roleId.sheep,
             ];
-            if (coreRoleIds.some(id => !id)) {
-                console.warn('External model catalog missing one or more core role ids.');
+            if (essentialRoleIds.some(id => !id)) {
+                console.warn('External model catalog missing one or more essential role ids.');
                 return;
             }
 
@@ -114,7 +112,9 @@ class ExternalModelCatalog {
                 .flat()
                 .filter(Boolean);
             const idSet = new Set([
-                ...coreRoleIds,
+                ...essentialRoleIds,
+                this.roleId.dog,
+                this.roleId.sheep,
                 ...this.animalIds.dog,
                 ...this.animalIds.sheep,
                 ...curatedFurnitureIds,
@@ -122,9 +122,9 @@ class ExternalModelCatalog {
 
             await Promise.all([...idSet].map(id => this._loadById(id)));
 
-            const missingCoreTemplate = coreRoleIds.some(id => !this.templates.has(id));
-            if (missingCoreTemplate) {
-                console.warn('External model catalog could not load one or more core role templates.');
+            const missingEssentialTemplate = essentialRoleIds.some(id => !this.templates.has(id));
+            if (missingEssentialTemplate) {
+                console.warn('External model catalog could not load one or more essential role templates.');
                 return;
             }
             this._ready = true;
