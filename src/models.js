@@ -18,6 +18,7 @@ const texturePack = createTexturePack();
 const _tmpBox = new THREE.Box3();
 const _tmpSize = new THREE.Vector3();
 const _tmpCenter = new THREE.Vector3();
+const _tmpBakedVertex = new THREE.Vector3();
 
 function _specForType(type) {
     return MODEL_VALIDATION_LIMITS.TARGET_DIMENSIONS_PER_TYPE[type]
@@ -29,12 +30,77 @@ function _limitForType(bucket, type, fallback) {
     return limits[type] || limits.default || fallback;
 }
 
+function _bakeSkinnedMeshesToStatic(root) {
+    if (!root) return;
+    const skinnedMeshes = [];
+    root.updateWorldMatrix(true, true);
+    root.traverse((node) => {
+        if (node?.isSkinnedMesh && node.geometry && node.parent) {
+            skinnedMeshes.push(node);
+        }
+    });
+
+    for (const skinned of skinnedMeshes) {
+        const sourcePos = skinned.geometry?.attributes?.position;
+        if (!sourcePos || sourcePos.count <= 0) continue;
+
+        if (typeof skinned.pose === 'function') {
+            skinned.pose();
+        }
+        skinned.updateWorldMatrix(true, false);
+        if (skinned.skeleton && typeof skinned.skeleton.update === 'function') {
+            skinned.skeleton.update();
+        }
+
+        const bakedGeometry = skinned.geometry.clone();
+        const bakedPos = new Float32Array(sourcePos.count * 3);
+        for (let i = 0; i < sourcePos.count; i++) {
+            if (typeof skinned.boneTransform === 'function') {
+                skinned.boneTransform(i, _tmpBakedVertex);
+            } else {
+                _tmpBakedVertex.fromBufferAttribute(sourcePos, i);
+            }
+            const idx = i * 3;
+            bakedPos[idx] = _tmpBakedVertex.x;
+            bakedPos[idx + 1] = _tmpBakedVertex.y;
+            bakedPos[idx + 2] = _tmpBakedVertex.z;
+        }
+
+        bakedGeometry.setAttribute('position', new THREE.BufferAttribute(bakedPos, 3));
+        bakedGeometry.deleteAttribute('skinIndex');
+        bakedGeometry.deleteAttribute('skinWeight');
+        bakedGeometry.computeVertexNormals();
+        bakedGeometry.computeBoundingSphere();
+        bakedGeometry.computeBoundingBox();
+
+        const nextMaterial = Array.isArray(skinned.material)
+            ? skinned.material.map((material) => (material?.clone ? material.clone() : material))
+            : (skinned.material?.clone ? skinned.material.clone() : skinned.material);
+
+        const bakedMesh = new THREE.Mesh(bakedGeometry, nextMaterial);
+        bakedMesh.name = skinned.name;
+        bakedMesh.castShadow = skinned.castShadow;
+        bakedMesh.receiveShadow = skinned.receiveShadow;
+        bakedMesh.visible = skinned.visible;
+        bakedMesh.frustumCulled = true;
+        bakedMesh.position.copy(skinned.position);
+        bakedMesh.quaternion.copy(skinned.quaternion);
+        bakedMesh.scale.copy(skinned.scale);
+        bakedMesh.renderOrder = skinned.renderOrder;
+        bakedMesh.userData = { ...skinned.userData };
+
+        skinned.parent.add(bakedMesh);
+        skinned.parent.remove(skinned);
+    }
+}
+
 function _prepareExternalModel(root, opts = {}) {
     if (!root) return null;
 
     const castShadow = opts.castShadow !== false;
     const receiveShadow = opts.receiveShadow !== false;
     const allowSkinned = opts.allowSkinned === true;
+    const bakeSkinned = opts.bakeSkinned !== false;
     let hasSkinnedMesh = false;
     let totalVertices = 0;
     root.traverse((node) => {
@@ -46,6 +112,20 @@ function _prepareExternalModel(root, opts = {}) {
         node.receiveShadow = receiveShadow;
         node.frustumCulled = !node.isSkinnedMesh;
     });
+
+    if (hasSkinnedMesh && bakeSkinned) {
+        _bakeSkinnedMeshesToStatic(root);
+        hasSkinnedMesh = false;
+        totalVertices = 0;
+        root.traverse((node) => {
+            if (!node.isMesh) return;
+            const vertCount = node.geometry?.attributes?.position?.count || 0;
+            totalVertices += vertCount;
+            node.castShadow = castShadow && vertCount < 9000;
+            node.receiveShadow = receiveShadow;
+            node.frustumCulled = true;
+        });
+    }
 
     if (totalVertices > (opts.maxVertices || 42000)) {
         return null;
@@ -278,7 +358,8 @@ export function createPlayer() {
         maxExtent: 1.35,
         castShadow: true,
         receiveShadow: true,
-        allowSkinned: true
+        allowSkinned: true,
+        bakeSkinned: true
     });
     if (!external) return null;
     _polishExternalPlayerMaterials(external);
@@ -329,7 +410,8 @@ export function createSheep(scale = 1) {
         maxExtent: 1.8 * scale,
         castShadow: false,
         receiveShadow: true,
-        allowSkinned: true
+        allowSkinned: true,
+        bakeSkinned: true
     };
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
@@ -347,7 +429,8 @@ export function createDog() {
         maxExtent: 1.6,
         castShadow: false,
         receiveShadow: true,
-        allowSkinned: true
+        allowSkinned: true,
+        bakeSkinned: true
     };
     const external = _tryCreateExternalAnimal('dog', opts) || _tryCreateExternalRoleWithFallbacks('dog', opts);
     if (!external) return null;
