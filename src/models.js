@@ -320,7 +320,8 @@ export function createSheep(scale = 1) {
         maxExtent: 1.8 * scale,
         castShadow: false,
         receiveShadow: true,
-        allowSkinned: true
+        // Prefer stable static meshes for gameplay entities.
+        allowSkinned: false
     };
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
