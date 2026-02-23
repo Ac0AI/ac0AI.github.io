@@ -26,10 +26,41 @@ function isPortableFurniture(meta) {
     return !blocked.some(token => id.includes(token));
 }
 
+function _parallelTraverse(a, b, cb) {
+    cb(a, b);
+    for (let i = 0; i < a.children.length; i++) {
+        _parallelTraverse(a.children[i], b.children[i], cb);
+    }
+}
+
+function cloneSkinnedHierarchy(source) {
+    const clone = source.clone(true);
+    const sourceLookup = new Map();
+    const cloneLookup = new Map();
+
+    _parallelTraverse(source, clone, (sourceNode, clonedNode) => {
+        sourceLookup.set(clonedNode, sourceNode);
+        cloneLookup.set(sourceNode, clonedNode);
+    });
+
+    clone.traverse((node) => {
+        if (!node?.isSkinnedMesh) return;
+        const sourceMesh = sourceLookup.get(node);
+        const sourceSkeleton = sourceMesh?.skeleton;
+        if (!sourceSkeleton) return;
+
+        const skeleton = sourceSkeleton.clone();
+        skeleton.bones = sourceSkeleton.bones.map((bone) => cloneLookup.get(bone)).filter(Boolean);
+        node.bind(skeleton, sourceMesh.bindMatrix);
+    });
+
+    return clone;
+}
+
 class ExternalModelCatalog {
     constructor() {
         this.loader = new GLTFLoader();
-        this._skeletonCloneFn = null;
+        this._skeletonCloneFn = cloneSkinnedHierarchy;
         this.templates = new Map();
         this.loading = new Map();
         this.models = [];
@@ -145,12 +176,12 @@ class ExternalModelCatalog {
 
         try {
             const skelMod = await import('https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/utils/SkeletonUtils.js');
-            const cloneFn = skelMod?.SkeletonUtils?.clone;
+            const cloneFn = skelMod?.clone || skelMod?.SkeletonUtils?.clone;
             if (typeof cloneFn === 'function') {
                 this._skeletonCloneFn = cloneFn;
             }
         } catch (err) {
-            console.warn('SkeletonUtils unavailable, using basic clone fallback.', err);
+            console.warn('SkeletonUtils unavailable, using local skinned clone fallback.', err);
         }
     }
 

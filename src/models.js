@@ -61,6 +61,7 @@ function _prepareExternalModel(root, opts = {}) {
     _tmpBox.setFromObject(root);
     _tmpBox.getSize(_tmpSize);
     _tmpBox.getCenter(_tmpCenter);
+    const hadFiniteBounds = Number.isFinite(_tmpBox.min.y) && Number.isFinite(_tmpBox.max.y);
 
     if (
         !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
@@ -81,7 +82,10 @@ function _prepareExternalModel(root, opts = {}) {
 
     const scaleFromHeight = targetHeight / _tmpSize.y;
     const scaleFromExtent = maxExtent / currentExtent;
-    const uniformScale = Math.min(scaleFromHeight, scaleFromExtent) * (opts.extraScale || 1);
+    // Skinned assets often include animation bounds much wider than gameplay stance.
+    // Prioritize height normalization so characters don't get shrunk into tiny silhouettes.
+    const baseScale = hasSkinnedMesh ? scaleFromHeight : Math.min(scaleFromHeight, scaleFromExtent);
+    const uniformScale = baseScale * (opts.extraScale || 1);
     root.scale.multiplyScalar(uniformScale);
 
     root.updateWorldMatrix(true, true);
@@ -93,50 +97,55 @@ function _prepareExternalModel(root, opts = {}) {
     ) {
         if (!hasSkinnedMesh) return null;
     }
-    if (!hasSkinnedMesh) {
+    if (Number.isFinite(_tmpBox.min.x) && Number.isFinite(_tmpBox.max.x) && Number.isFinite(_tmpBox.min.z) && Number.isFinite(_tmpBox.max.z)) {
         _tmpBox.getCenter(_tmpCenter);
     }
-    root.position.x -= _tmpCenter.x;
-    root.position.z -= _tmpCenter.z;
-    root.position.y -= _tmpBox.min.y;
+    const safeCenterX = Number.isFinite(_tmpCenter.x) ? _tmpCenter.x : 0;
+    const safeCenterZ = Number.isFinite(_tmpCenter.z) ? _tmpCenter.z : 0;
+    const safeMinY = (Number.isFinite(_tmpBox.min.y) ? _tmpBox.min.y : (hadFiniteBounds ? 0 : -targetHeight * 0.5));
+    root.position.x -= safeCenterX;
+    root.position.z -= safeCenterZ;
+    root.position.y -= safeMinY;
     root.position.y += opts.yOffset || 0;
     root.updateWorldMatrix(true, true);
 
-    const expectedExtent = Number.isFinite(maxExtent)
-        ? Math.max(targetHeight, maxExtent, 0.2)
-        : Math.max(targetHeight, 0.2);
-    const maxAllowedMeshRadius = _limitForType('MAX_WORLD_RADIUS_PER_TYPE', modelType, expectedExtent * 2.8);
-    const maxAllowedMeshOffset = _limitForType('MAX_WORLD_OFFSET_PER_TYPE', modelType, expectedExtent * 3.2);
-    let suspiciousMesh = false;
-    root.traverse((node) => {
-        if (!node.isMesh || !node.geometry || suspiciousMesh) return;
-        if (!node.geometry.boundingSphere) {
-            try { node.geometry.computeBoundingSphere(); } catch (_) { }
-        }
-        const sphere = node.geometry.boundingSphere;
-        if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius <= 0) {
-            suspiciousMesh = true;
-            return;
-        }
+    if (!hasSkinnedMesh) {
+        const expectedExtent = Number.isFinite(maxExtent)
+            ? Math.max(targetHeight, maxExtent, 0.2)
+            : Math.max(targetHeight, 0.2);
+        const maxAllowedMeshRadius = _limitForType('MAX_WORLD_RADIUS_PER_TYPE', modelType, expectedExtent * 2.8);
+        const maxAllowedMeshOffset = _limitForType('MAX_WORLD_OFFSET_PER_TYPE', modelType, expectedExtent * 3.2);
+        let suspiciousMesh = false;
+        root.traverse((node) => {
+            if (!node.isMesh || !node.geometry || suspiciousMesh) return;
+            if (!node.geometry.boundingSphere) {
+                try { node.geometry.computeBoundingSphere(); } catch (_) { }
+            }
+            const sphere = node.geometry.boundingSphere;
+            if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius <= 0) {
+                suspiciousMesh = true;
+                return;
+            }
 
-        const e = node.matrixWorld?.elements || [];
-        const sx = Math.hypot(e[0] || 0, e[1] || 0, e[2] || 0);
-        const sy = Math.hypot(e[4] || 0, e[5] || 0, e[6] || 0);
-        const sz = Math.hypot(e[8] || 0, e[9] || 0, e[10] || 0);
-        const scaleMax = Math.max(Math.abs(sx), Math.abs(sy), Math.abs(sz), 0.00001);
-        const radiusWorld = sphere.radius * scaleMax;
-        const worldOffset = Math.hypot(e[12] || 0, e[13] || 0, e[14] || 0);
+            const e = node.matrixWorld?.elements || [];
+            const sx = Math.hypot(e[0] || 0, e[1] || 0, e[2] || 0);
+            const sy = Math.hypot(e[4] || 0, e[5] || 0, e[6] || 0);
+            const sz = Math.hypot(e[8] || 0, e[9] || 0, e[10] || 0);
+            const scaleMax = Math.max(Math.abs(sx), Math.abs(sy), Math.abs(sz), 0.00001);
+            const radiusWorld = sphere.radius * scaleMax;
+            const worldOffset = Math.hypot(e[12] || 0, e[13] || 0, e[14] || 0);
 
-        if (
-            !Number.isFinite(radiusWorld) || !Number.isFinite(worldOffset)
-            || radiusWorld > maxAllowedMeshRadius
-            || worldOffset > maxAllowedMeshOffset
-        ) {
-            suspiciousMesh = true;
+            if (
+                !Number.isFinite(radiusWorld) || !Number.isFinite(worldOffset)
+                || radiusWorld > maxAllowedMeshRadius
+                || worldOffset > maxAllowedMeshOffset
+            ) {
+                suspiciousMesh = true;
+            }
+        });
+        if (suspiciousMesh) {
+            return null;
         }
-    });
-    if (suspiciousMesh) {
-        return null;
     }
 
     root.userData.externalModel = true;
@@ -320,8 +329,7 @@ export function createSheep(scale = 1) {
         maxExtent: 1.8 * scale,
         castShadow: false,
         receiveShadow: true,
-        // Prefer stable static meshes for gameplay entities.
-        allowSkinned: false
+        allowSkinned: true
     };
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
@@ -339,7 +347,7 @@ export function createDog() {
         maxExtent: 1.6,
         castShadow: false,
         receiveShadow: true,
-        allowSkinned: false
+        allowSkinned: true
     };
     const external = _tryCreateExternalAnimal('dog', opts) || _tryCreateExternalRoleWithFallbacks('dog', opts);
     if (!external) return null;
