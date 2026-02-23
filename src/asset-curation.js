@@ -42,6 +42,7 @@ export const CURATED_FURNITURE_TYPES = Object.freeze(
 
 export const MAX_WORLD_RADIUS_PER_TYPE = Object.freeze({
     default: 2.8,
+    player: 8.0,
     truck: 4.8,
     building: 6.6,
     sheep: 1.8,
@@ -74,6 +75,7 @@ export const MAX_WORLD_RADIUS_PER_TYPE = Object.freeze({
 
 export const MAX_WORLD_OFFSET_PER_TYPE = Object.freeze({
     default: 3.2,
+    player: 14.0,
     truck: 6.8,
     building: 8.4,
     sheep: 2.1,
@@ -106,6 +108,7 @@ export const MAX_WORLD_OFFSET_PER_TYPE = Object.freeze({
 
 const TARGET_DIMENSIONS_PER_TYPE = Object.freeze({
     default: { targetHeight: 0.7, maxExtent: 1.0, maxVertices: 26000 },
+    player: { targetHeight: 1.95, maxExtent: 1.6, maxVertices: 52000 },
     truck: { targetHeight: 1.7, maxExtent: 4.9, maxVertices: 56000 },
     building: { targetHeight: 4.4, maxExtent: 6.1, maxVertices: 62000 },
     sheep: { targetHeight: 1.1, maxExtent: 1.6, maxVertices: 26000 },
