@@ -3,7 +3,9 @@ import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { externalModelCatalog } from './external-model-catalog.js';
 import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 
-export const EXTERNAL_PLAYER_ENABLED = true;
+// External "man" asset is inconsistent in this scene scale; keep the
+// handcrafted player model as the default for stable visual quality.
+export const EXTERNAL_PLAYER_ENABLED = false;
 export const EXTERNAL_DOG_ENABLED = true;
 export const EXTERNAL_FURNITURE_ENABLED = true;
 const STRICT_CURATED_FURNITURE = false;

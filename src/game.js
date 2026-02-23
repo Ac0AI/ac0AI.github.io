@@ -25,14 +25,14 @@ import { CURATED_FURNITURE_TYPES } from './asset-curation.js';
 const POINT_VALUES = {
     box: 1, cd: 1, plant: 2,
     lamp: 2, chair: 2, clock: 2, radio: 2,
-    sofa: 3, bookshelf: 3, washer: 3, freezer: 3,
+    sofa: 3, bookshelf: 3, freezer: 3,
     tv: 5, console: 5, fridge: 4, guitar: 4,
     table: 3, mirror: 4, rug: 2, piano: 5, microwave: 3, vase: 2
 };
 
 const FURNITURE_TYPES = CURATED_FURNITURE_TYPES.length > 0
     ? [...CURATED_FURNITURE_TYPES]
-    : ['box', 'sofa', 'lamp', 'plant', 'chair', 'fridge', 'table', 'washer', 'bookshelf', 'microwave'];
+    : ['box', 'sofa', 'lamp', 'plant', 'chair', 'fridge', 'table', 'bookshelf', 'microwave'];
 const PROCEDURAL_FURNITURE_SCALE = 1.3;
 const PROCEDURAL_CARRY_SCALE_MULT = 1.5 / PROCEDURAL_FURNITURE_SCALE;
 const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;

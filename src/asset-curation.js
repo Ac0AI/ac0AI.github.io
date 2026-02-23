@@ -13,7 +13,7 @@ export const CURATED_FURNITURE_BY_TYPE = Object.freeze({
     radio: [], // procedural
     guitar: [], // procedural
     clock: [], // procedural
-    washer: ['washing_machine'],
+    washer: [], // disabled: washing machine visuals are intentionally excluded
     table: ['table_round_large', 'table_round_small', 'night_stand', 'table_round_small-57w671wvs2', 'night_stand-08s1j15jcx', 'night_stand-7cobkfclnv'],
     mirror: [], // procedural
     rug: ['rug', 'round_rug'],
