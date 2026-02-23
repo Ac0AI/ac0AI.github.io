@@ -63,34 +63,40 @@ class ExternalModelCatalog {
             this.modelById = new Map(this.models.map(m => [m.id, m]));
             this.furniture = this.models.filter(m => hasTag(m, 'furniture') && isPortableFurniture(m));
 
-            this.roleId.player = this._pickCuratedRoleId('player') || this._findIdPreferStatic(
+            const playerFallback = this._findIdPreferStatic(
                 m => includesAny(m.id, ['u_body_', 'character']) && !includesAny(m.id, ['dog'])
             );
-            this.roleId.truck = this._pickCuratedRoleId('truck') || this._findIdPreferStatic(
+            const truckFallback = this._findIdPreferStatic(
                 m => (
                     (hasTag(m, 'vehicle') && !includesAny(m.id, ['wheel']))
                     || (includesAny(m.id, ['van', 'truck']) && !includesAny(m.id, ['wheel']))
                 )
             );
-            this.roleId.building = this._pickCuratedRoleId('building') || this._findIdPreferStatic(
+            const buildingFallback = this._findIdPreferStatic(
                 m => hasTag(m, 'building') || includesAny(m.id, ['building', 'house'])
             );
-            this.roleId.dog = this._pickCuratedRoleId('dog') || this._findIdPreferStatic(
+            const dogFallback = this._findIdPreferStatic(
                 m => includesAny(m.id, ['dog']) || hasTag(m, 'animal')
             );
-            this.roleId.sheep = this._pickCuratedRoleId('sheep') || this._findIdPreferStatic(
+            const sheepFallback = this._findIdPreferStatic(
                 m => (hasTag(m, 'animal') || includesAny(m.id, ['sheep', 'cow', 'horse', 'llama', 'pig', 'zebra']))
                     && !includesAny(m.id, ['dog'])
             );
 
-            this.animalIds.dog = this._collectCuratedIds('dog');
-            if (this.animalIds.dog.length === 0 && this.roleId.dog) {
-                this.animalIds.dog = [this.roleId.dog];
-            }
-            this.animalIds.sheep = this._collectCuratedIds('sheep');
-            if (this.animalIds.sheep.length === 0 && this.roleId.sheep) {
-                this.animalIds.sheep = [this.roleId.sheep];
-            }
+            this.roleId.player = await this._pickFirstLoadableId(this._candidateRoleIds('player', playerFallback));
+            this.roleId.truck = await this._pickFirstLoadableId(this._candidateRoleIds('truck', truckFallback));
+            this.roleId.building = await this._pickFirstLoadableId(this._candidateRoleIds('building', buildingFallback));
+            this.roleId.dog = await this._pickFirstLoadableId(this._candidateRoleIds('dog', dogFallback));
+            this.roleId.sheep = await this._pickFirstLoadableId(this._candidateRoleIds('sheep', sheepFallback));
+
+            this.animalIds.dog = await this._collectLoadableIds([
+                ...this._collectCuratedIds('dog'),
+                this.roleId.dog
+            ]);
+            this.animalIds.sheep = await this._collectLoadableIds([
+                ...this._collectCuratedIds('sheep'),
+                this.roleId.sheep
+            ]);
 
             const coreRoleIds = [
                 this.roleId.player,
@@ -171,6 +177,31 @@ class ExternalModelCatalog {
         const curated = CURATED_ROLE_MODELS[role];
         if (!Array.isArray(curated) || curated.length === 0) return [];
         return curated.filter(id => this.modelById.has(id));
+    }
+
+    _candidateRoleIds(role, fallbackId = null) {
+        const curated = this._collectCuratedIds(role);
+        const list = [...curated];
+        if (fallbackId && !list.includes(fallbackId) && this.modelById.has(fallbackId)) {
+            list.push(fallbackId);
+        }
+        return list;
+    }
+
+    async _pickFirstLoadableId(ids = []) {
+        for (const id of ids) {
+            if (!id || !this.modelById.has(id)) continue;
+            const loaded = await this._loadById(id);
+            if (loaded) return id;
+        }
+        return null;
+    }
+
+    async _collectLoadableIds(ids = []) {
+        const unique = [...new Set((ids || []).filter(id => id && this.modelById.has(id)))];
+        if (unique.length === 0) return [];
+        await Promise.all(unique.map(id => this._loadById(id)));
+        return unique.filter(id => this.templates.has(id));
     }
 
     async _loadById(id) {
@@ -308,7 +339,9 @@ class ExternalModelCatalog {
         if (this.furniture.length === 0) return null;
         const source = this._getFurnitureSourceForType(type);
         if (!source || source.length === 0) return null;
-        const pick = source[Math.floor(Math.random() * source.length)];
+        const loaded = source.filter(meta => this.templates.has(meta.id));
+        const pool = loaded.length > 0 ? loaded : source;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
         return pick ? this.cloneById(pick.id) : null;
     }
 }

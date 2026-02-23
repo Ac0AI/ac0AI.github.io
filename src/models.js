@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createTexturePack, getSurfaceMaterialProps } from './textures.js';
 import { externalModelCatalog } from './external-model-catalog.js';
-import { MODEL_VALIDATION_LIMITS } from './asset-curation.js';
+import { CURATED_ROLE_MODELS, MODEL_VALIDATION_LIMITS } from './asset-curation.js';
 
 // Runtime now uses external models only (no procedural gameplay fallbacks).
 export const EXTERNAL_PLAYER_ENABLED = true;
@@ -149,6 +149,23 @@ function _tryCreateExternalRole(role, opts = {}) {
     return root ? _prepareExternalModel(root, { ...opts, validationType: role }) : null;
 }
 
+function _tryCreateExternalRoleWithFallbacks(role, opts = {}) {
+    if (!externalModelCatalog.ready) return null;
+    const candidates = [
+        ...(Array.isArray(CURATED_ROLE_MODELS[role]) ? CURATED_ROLE_MODELS[role] : []),
+        externalModelCatalog.roleId?.[role]
+    ].filter(Boolean);
+    const seen = new Set();
+    for (const id of candidates) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const root = externalModelCatalog.cloneById(id);
+        const prepared = root ? _prepareExternalModel(root, { ...opts, validationType: role }) : null;
+        if (prepared) return prepared;
+    }
+    return null;
+}
+
 function _tryCreateExternalAnimal(kind, opts = {}) {
     if (!externalModelCatalog.ready) return null;
     const root = externalModelCatalog.cloneAnimal(kind);
@@ -247,7 +264,7 @@ function cylinder(rTop, rBot, h, color, segs = 8, opts = {}) {
 // PLAYER — cute mover character
 // ============================================================
 export function createPlayer() {
-    const external = _tryCreateExternalRole('player', {
+    const external = _tryCreateExternalRoleWithFallbacks('player', {
         targetHeight: 1.95,
         maxExtent: 1.35,
         castShadow: true,
@@ -265,7 +282,7 @@ export function createPlayer() {
 // ============================================================
 export function createTruck() {
     const truckSpec = _specForType('truck');
-    const external = _tryCreateExternalRole('truck', {
+    const external = _tryCreateExternalRoleWithFallbacks('truck', {
         ...truckSpec,
         castShadow: true,
         receiveShadow: true
@@ -282,7 +299,7 @@ export function createTruck() {
 // ============================================================
 export function createHouse() {
     const buildingSpec = _specForType('building');
-    const external = _tryCreateExternalRole('building', {
+    const external = _tryCreateExternalRoleWithFallbacks('building', {
         ...buildingSpec,
         castShadow: true,
         receiveShadow: true
@@ -298,13 +315,14 @@ export function createHouse() {
 // SHEEP — fluffy cloud sheep
 // ============================================================
 export function createSheep(scale = 1) {
-    const external = _tryCreateExternalRole('sheep', {
+    const opts = {
         targetHeight: 1.2 * scale,
         maxExtent: 1.8 * scale,
         castShadow: false,
         receiveShadow: true,
         allowSkinned: true
-    });
+    };
+    const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
     external.userData.type = 'sheep';
     return external;
@@ -315,13 +333,14 @@ export function createSheep(scale = 1) {
 // ============================================================
 export function createDog() {
     if (!EXTERNAL_DOG_ENABLED) return null;
-    const external = _tryCreateExternalRole('dog', {
+    const opts = {
         targetHeight: 1.1,
         maxExtent: 1.6,
         castShadow: false,
         receiveShadow: true,
         allowSkinned: false
-    });
+    };
+    const external = _tryCreateExternalAnimal('dog', opts) || _tryCreateExternalRoleWithFallbacks('dog', opts);
     if (!external) return null;
     external.traverse((node) => {
         if (node?.isMesh) node.visible = true;
