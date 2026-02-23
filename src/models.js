@@ -621,9 +621,14 @@ export function createDog() {
             maxExtent: 1.6,
             castShadow: true,
             receiveShadow: true,
-            allowSkinned: true
+            // Dog assets with skinning have been unreliable here (spawned but visually missing).
+            // Prefer guaranteed-visible fallback over potentially invisible skinned imports.
+            allowSkinned: false
         });
         if (external) {
+            external.traverse((node) => {
+                if (node?.isMesh) node.visible = true;
+            });
             external.userData.type = 'dog';
             return external;
         }

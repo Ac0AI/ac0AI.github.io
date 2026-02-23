@@ -223,10 +223,11 @@ export class EnemyManager {
 
     // Dog — chases and removes sheep
     spawnDog(playerPos, audio) {
-        if (this.activeDog && this.dog) return;
+        if (this.activeDog && this.dog) return false;
         if (this.activeDog && !this.dog) {
             this._finishDog();
         }
+        if (this.sheep.length === 0) return false;
 
         const worldSize = 18;
         const edge = Math.floor(Math.random() * 4);
@@ -244,11 +245,11 @@ export class EnemyManager {
         } catch (err) {
             console.error('Dog spawn failed:', err);
             this._finishDog();
-            return;
+            return false;
         }
         if (!model) {
             this._finishDog();
-            return;
+            return false;
         }
 
         this.dog = model;
@@ -262,6 +263,8 @@ export class EnemyManager {
                 audio.playSound('dog');
             } catch (_) { }
         }
+
+        return true;
     }
 
     _updateDog(dt) {

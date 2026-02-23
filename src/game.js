@@ -94,6 +94,7 @@ export class Game {
         this._sheepSpawnAcc = 0;
         this._powerUpSpawnAcc = 0;
         this._dogSpawnAcc = 0;
+        this._dogHasSpawned = false;
         this._difficultyAcc = 0;
         this._externalUpgradeQueued = false;
         this._externalUpgradeApplied = false;
@@ -178,6 +179,7 @@ export class Game {
         this._sheepSpawnAcc = 0;
         this._powerUpSpawnAcc = 0;
         this._dogSpawnAcc = 0;
+        this._dogHasSpawned = false;
         this._difficultyAcc = 0;
 
         // Spawn initial furniture
@@ -396,9 +398,32 @@ export class Game {
     _queueExternalModelUpgrade() {
         if (this._externalUpgradeQueued || this._externalUpgradeApplied) return;
         this._externalUpgradeQueued = true;
+
+        // If external assets are slow or unavailable, reveal deferred fallback models.
+        const revealFallbackLater = this._setManagedTimeout(() => {
+            if (!this._externalUpgradeApplied) {
+                this._revealDeferredWorldFallbacks();
+            }
+        }, 2200);
+
         externalModelCatalog.whenReady().then(() => {
+            clearTimeout(revealFallbackLater);
+            this._timeouts.delete(revealFallbackLater);
             this._externalUpgradeQueued = false;
-            this._applyExternalModelUpgrade();
+            if (externalModelCatalog.ready) {
+                this._applyExternalModelUpgrade();
+            } else {
+                this._revealDeferredWorldFallbacks();
+            }
+        });
+    }
+
+    _revealDeferredWorldFallbacks() {
+        const models = [this.world?.truckModel, this.world?.houseModel];
+        models.forEach((model) => {
+            if (!model?.userData?.deferRevealUntilExternal) return;
+            model.visible = true;
+            delete model.userData.deferRevealUntilExternal;
         });
     }
 
@@ -493,6 +518,7 @@ export class Game {
         if (changed) {
             this._externalUpgradeApplied = true;
         }
+        this._revealDeferredWorldFallbacks();
     }
 
     // ============================================================
@@ -565,9 +591,15 @@ export class Game {
         this._dogSpawnAcc += dt;
         if (this._dogSpawnAcc >= 15) {
             this._dogSpawnAcc = 0;
-            if (Math.random() < 0.2) {
-                this.enemies.spawnDog(this.playerPos, this.audio);
-                this.ui.showAnnouncement('🐕 VALLHUND!');
+            const shouldAttempt = !this._dogHasSpawned || Math.random() < 0.2;
+            if (shouldAttempt) {
+                const spawned = this.enemies.spawnDog(this.playerPos, this.audio);
+                if (spawned) {
+                    this._dogHasSpawned = true;
+                }
+                if (spawned) {
+                    this.ui.showAnnouncement('🐕 VALLHUND!');
+                }
             }
         }
 
