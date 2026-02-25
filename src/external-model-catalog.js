@@ -75,11 +75,10 @@ class ExternalModelCatalog {
                 m => hasTag(m, 'building') || includesAny(m.id, ['building', 'house'])
             );
             const dogFallback = this._findIdPreferStatic(
-                m => includesAny(m.id, ['dog']) || hasTag(m, 'animal')
+                m => includesAny(m.id, ['dog', 'pug', 'shepherd', 'shepard'])
             );
             const sheepFallback = this._findIdPreferStatic(
-                m => (hasTag(m, 'animal') || includesAny(m.id, ['sheep', 'cow', 'horse', 'llama', 'pig', 'zebra']))
-                    && !includesAny(m.id, ['dog'])
+                m => includesAny(m.id, ['sheep', 'ram', 'ewe'])
             );
 
             this.roleId.player = await this._pickFirstLoadableId(this._candidateRoleIds('player', playerFallback));

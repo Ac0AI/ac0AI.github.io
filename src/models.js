@@ -313,6 +313,66 @@ function _polishExternalPlayerMaterials(root) {
     });
 }
 
+function _polishExternalAnimalMaterials(root, kind = 'sheep') {
+    const palette = kind === 'dog'
+        ? {
+            main: new THREE.Color(0xb99165),
+            dark: new THREE.Color(0x3d2d20),
+            light: new THREE.Color(0xe8d7bf),
+            emissive: new THREE.Color(0x2a1d11)
+        }
+        : {
+            main: new THREE.Color(0xf2f3ef),
+            dark: new THREE.Color(0x3a3430),
+            light: new THREE.Color(0xffffff),
+            emissive: new THREE.Color(0x1a1a1a)
+        };
+    const furSurface = getSurfaceMaterialProps(texturePack, 'fabric');
+
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        const nextMats = mats.map((material) => {
+            if (!material || !material.isMaterial) return material;
+            const next = material.clone();
+            const brightness = next.color
+                ? (next.color.r + next.color.g + next.color.b) / 3
+                : 0.5;
+            const target = brightness < 0.26
+                ? palette.dark
+                : brightness > 0.72
+                    ? palette.light
+                    : palette.main;
+
+            if (!next.map && furSurface.map) {
+                next.map = furSurface.map;
+            }
+            _ensureColorMapColorSpace(next);
+            if (next.color) {
+                next.color.lerp(target, kind === 'dog' ? 0.54 : 0.62);
+            }
+            if (typeof next.roughness === 'number') {
+                next.roughness = THREE.MathUtils.clamp(next.roughness, 0.52, 0.94);
+            } else {
+                next.roughness = furSurface.roughness;
+            }
+            if (typeof next.metalness === 'number') {
+                next.metalness = THREE.MathUtils.clamp(next.metalness, 0.0, 0.12);
+            } else {
+                next.metalness = 0.02;
+            }
+            if ('emissive' in next) {
+                next.emissive = next.emissive || new THREE.Color(0x000000);
+                next.emissive.lerp(palette.emissive, 0.08);
+                next.emissiveIntensity = Math.max(0.04, next.emissiveIntensity || 0.04);
+            }
+            next.envMapIntensity = Math.max(0.22, next.envMapIntensity || 0.22);
+            return next;
+        });
+        node.material = Array.isArray(node.material) ? nextMats : nextMats[0];
+    });
+}
+
 function buildStandardMaterial(color, defaults, opts = {}) {
     const { surface = 'painted', ...matOpts } = opts;
     const surfaceProps = getSurfaceMaterialProps(texturePack, surface);
@@ -537,6 +597,7 @@ export function createSheep(scale = 1) {
     };
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
+    _polishExternalAnimalMaterials(external, 'sheep');
     external.userData.type = 'sheep';
     return external;
 }
@@ -556,6 +617,7 @@ export function createDog() {
     };
     const external = _tryCreateExternalAnimal('dog', opts) || _tryCreateExternalRoleWithFallbacks('dog', opts);
     if (!external) return null;
+    _polishExternalAnimalMaterials(external, 'dog');
     external.traverse((node) => {
         if (node?.isMesh) node.visible = true;
     });

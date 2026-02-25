@@ -31,7 +31,8 @@ export const CURATED_ROLE_MODELS = Object.freeze({
     dog: ['pug'],
     truck: ['stationwagon', 'car_hatchback', 'taxi', 'police_car'],
     building: ['building', 'building_b', 'watertower', 'building-7lmept2icd', 'building-t3oyvk6veu', 'building-bbh2bg73qm', 'building-g15lpkh4li', 'building-otrsya6pan', 'building-qohhglftam'],
-    sheep: ['sheep', 'cow', 'horse', 'llama', 'pig', 'zebra'] // Include other animals into the sheep array!
+    // Keep sheep visuals consistent: avoid mixing unrelated animal silhouettes.
+    sheep: ['sheep']
 });
 
 export const CURATED_FURNITURE_TYPES = Object.freeze(
