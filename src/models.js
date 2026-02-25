@@ -349,22 +349,144 @@ function cylinder(rTop, rBot, h, color, segs = 8, opts = {}) {
     return mesh;
 }
 
+function _createStylizedCourierPlayer() {
+    const group = new THREE.Group();
+
+    const palette = {
+        jacket: 0x2f6fd3,
+        jacketDark: 0x1e4ea4,
+        shirt: 0xdde7f7,
+        pants: 0x1f2d3d,
+        shoes: 0x161b24,
+        skin: 0xffcfab,
+        hair: 0x3a2924,
+        accent: 0x4ad2b8
+    };
+
+    const legL = new THREE.Group();
+    legL.position.set(-0.18, 0.96, 0);
+    legL.userData.baseY = legL.position.y;
+    const legLU = box(0.2, 0.48, 0.24, palette.pants, { surface: 'fabric', roughness: 0.78 });
+    legLU.position.y = -0.24;
+    legL.add(legLU);
+    const legLL = box(0.18, 0.42, 0.2, 0x26384e, { surface: 'fabric', roughness: 0.8 });
+    legLL.position.y = -0.69;
+    legL.add(legLL);
+    const shoeL = box(0.22, 0.12, 0.34, palette.shoes, { surface: 'rubber', roughness: 0.88 });
+    shoeL.position.set(0, -0.95, 0.05);
+    legL.add(shoeL);
+    group.add(legL);
+
+    const legR = legL.clone(true);
+    legR.position.x = 0.18;
+    legR.userData.baseY = legR.position.y;
+    group.add(legR);
+
+    const hips = box(0.52, 0.28, 0.34, 0x24364c, { surface: 'fabric', roughness: 0.76 });
+    hips.position.y = 1.02;
+    group.add(hips);
+
+    const torso = box(0.7, 0.9, 0.4, palette.jacket, { surface: 'fabric', roughness: 0.66 });
+    torso.position.y = 1.65;
+    group.add(torso);
+
+    const shirt = box(0.34, 0.76, 0.41, palette.shirt, { surface: 'fabric', roughness: 0.58 });
+    shirt.position.set(0, 1.67, 0.01);
+    group.add(shirt);
+
+    const zipper = box(0.05, 0.72, 0.42, palette.accent, { surface: 'metal', roughness: 0.36, metalness: 0.34 });
+    zipper.position.set(0, 1.66, 0.02);
+    group.add(zipper);
+
+    const chestPatch = box(0.18, 0.13, 0.43, palette.accent, { surface: 'painted' });
+    chestPatch.position.set(0.2, 1.86, 0.02);
+    group.add(chestPatch);
+
+    const backpack = box(0.44, 0.68, 0.24, palette.jacketDark, { surface: 'fabric', roughness: 0.72 });
+    backpack.position.set(0, 1.66, -0.3);
+    group.add(backpack);
+
+    const neck = cylinder(0.1, 0.11, 0.14, palette.skin, 10, { surface: 'skin', roughness: 0.6 });
+    neck.position.y = 2.18;
+    group.add(neck);
+
+    const armL = new THREE.Group();
+    armL.position.set(-0.47, 2.01, 0.02);
+    armL.userData.baseY = armL.position.y;
+    const upperArmL = box(0.17, 0.44, 0.2, palette.jacketDark, { surface: 'fabric', roughness: 0.74 });
+    upperArmL.position.y = -0.22;
+    armL.add(upperArmL);
+    const forearmL = box(0.15, 0.42, 0.17, palette.jacket, { surface: 'fabric', roughness: 0.7 });
+    forearmL.position.y = -0.65;
+    armL.add(forearmL);
+    const handL = sphere(0.1, palette.skin, { surface: 'skin', roughness: 0.58 });
+    handL.position.set(0, -0.92, 0.01);
+    armL.add(handL);
+    group.add(armL);
+
+    const armR = armL.clone(true);
+    armR.position.x = 0.47;
+    armR.userData.baseY = armR.position.y;
+    group.add(armR);
+
+    const head = new THREE.Group();
+    head.position.set(0, 2.4, 0.02);
+    head.userData.baseY = head.position.y;
+    const skull = box(0.5, 0.48, 0.46, palette.skin, { surface: 'skin', roughness: 0.52 });
+    skull.position.y = 0;
+    head.add(skull);
+    const hair = box(0.52, 0.16, 0.5, palette.hair, { surface: 'painted', roughness: 0.62 });
+    hair.position.y = 0.26;
+    head.add(hair);
+    const cap = box(0.56, 0.11, 0.52, palette.jacketDark, { surface: 'fabric', roughness: 0.73 });
+    cap.position.set(0, 0.33, 0);
+    head.add(cap);
+    const brim = box(0.42, 0.05, 0.24, palette.jacketDark, { surface: 'fabric', roughness: 0.74 });
+    brim.position.set(0, 0.25, 0.29);
+    head.add(brim);
+    const eyeL = box(0.07, 0.06, 0.04, 0x141414, { surface: 'painted', roughness: 0.35 });
+    eyeL.position.set(-0.11, 0.03, 0.24);
+    head.add(eyeL);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = 0.11;
+    head.add(eyeR);
+    const smile = box(0.16, 0.03, 0.03, 0x8a4e3e, { surface: 'painted', roughness: 0.42 });
+    smile.position.set(0, -0.12, 0.24);
+    head.add(smile);
+    group.add(head);
+
+    group.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(group);
+    _tmpBox.getSize(_tmpSize);
+    _tmpBox.getCenter(_tmpCenter);
+
+    const safeHeight = Math.max(0.0001, _tmpSize.y);
+    const targetPlayerHeight = 2.35;
+    group.scale.multiplyScalar(targetPlayerHeight / safeHeight);
+    group.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(group);
+    _tmpBox.getCenter(_tmpCenter);
+    group.position.x -= _tmpCenter.x;
+    group.position.z -= _tmpCenter.z;
+    group.position.y -= _tmpBox.min.y;
+
+    group.traverse((node) => {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+    });
+
+    group.userData.animRig = { armL, armR, legL, legR, head };
+    group.userData.externalModel = true;
+    group.userData.type = 'player';
+    return group;
+}
+
 // ============================================================
 // PLAYER — cute mover character
 // ============================================================
 export function createPlayer() {
-    const external = _tryCreateExternalRoleWithFallbacks('player', {
-        targetHeight: 1.95,
-        maxExtent: 1.35,
-        castShadow: true,
-        receiveShadow: true,
-        allowSkinned: true,
-        bakeSkinned: true
-    });
-    if (!external) return null;
-    _polishExternalPlayerMaterials(external);
-    external.userData.type = 'player';
-    return external;
+    return _createStylizedCourierPlayer();
 }
 
 // ============================================================
