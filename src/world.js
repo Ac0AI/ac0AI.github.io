@@ -74,28 +74,21 @@ export class World {
             groundPreset.segments,
             groundPreset.segments
         );
-        const colors = [];
-        const baseColor = new THREE.Color(theme.ground);
+        const colors = new Float32Array(groundGeo.attributes.position.count * 3);
         const posAttr = groundGeo.attributes.position;
-        for (let i = 0; i < posAttr.count; i++) {
-            const c = baseColor.clone();
-            c.offsetHSL(
-                (Math.random() - 0.5) * 0.04,
-                (Math.random() - 0.5) * 0.08,
-                (Math.random() - 0.5) * 0.06
-            );
-            colors.push(c.r, c.g, c.b);
-        }
-        groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        groundGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         const groundMat = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            ...getSurfaceMaterialProps(this.texturePack, 'grass')
+            ...getSurfaceMaterialProps(this.texturePack, 'grass'),
+            roughness: 0.95,
+            metalness: 0.02
         });
 
         this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.groundMesh.receiveShadow = true;
         this.scene.add(this.groundMesh);
+        this._applyGroundVertexColors(theme);
 
         // Grass tufts and flowers for visual variety
         this._addGrassDetails(theme);
@@ -178,6 +171,35 @@ export class World {
         this._createParticles(theme);
     }
 
+    _computeGroundColor(theme, x, z) {
+        const c = new THREE.Color(theme.ground);
+        const macroA = Math.sin((x + z) * 0.052) * 0.5 + 0.5;
+        const macroB = Math.sin((x * 0.12) - (z * 0.09) + 1.7) * 0.5 + 0.5;
+        const macroC = Math.cos((x * 0.045) + (z * 0.05) - 0.8) * 0.5 + 0.5;
+        c.offsetHSL(
+            (macroB - 0.5) * 0.035,
+            (macroC - 0.5) * 0.1,
+            (macroA - 0.5) * 0.14 + (macroB - 0.5) * 0.07
+        );
+        return c;
+    }
+
+    _applyGroundVertexColors(theme) {
+        if (!this.groundMesh?.geometry) return;
+        const posAttr = this.groundMesh.geometry.attributes.position;
+        const colorAttr = this.groundMesh.geometry.attributes.color;
+        if (!posAttr || !colorAttr) return;
+
+        for (let i = 0; i < posAttr.count; i++) {
+            // PlaneGeometry stores terrain coordinates on X/Y before mesh rotation.
+            const px = posAttr.getX(i);
+            const pz = posAttr.getY(i);
+            const c = this._computeGroundColor(theme, px, pz);
+            colorAttr.setXYZ(i, c.r, c.g, c.b);
+        }
+        colorAttr.needsUpdate = true;
+    }
+
     _addGrassDetails(theme) {
         this.grassDetails = this.grassDetails || [];
         this.grassDetails.forEach(g => this.scene.remove(g));
@@ -193,24 +215,32 @@ export class World {
             ? LIGHTING_PROFILE.ground.flowerCount.lowPower
             : LIGHTING_PROFILE.ground.flowerCount.normal;
 
-        // Darker / lighter grass patches (large subtle circles on ground)
+        // Darker / lighter grass patches (soft macro variation layer)
         for (let i = 0; i < patchCount; i++) {
             const r = 2 + Math.random() * 6;
-            const patchGeo = new THREE.CircleGeometry(r, 8);
+            const patchGeo = new THREE.CircleGeometry(r, 22);
             const baseColor = new THREE.Color(theme.ground);
-            const variation = (Math.random() - 0.5) * 0.12;
+            const variation = (Math.random() - 0.5) * 0.08;
             baseColor.r = Math.max(0, Math.min(1, baseColor.r + variation));
             baseColor.g = Math.max(0, Math.min(1, baseColor.g + variation * 0.8));
             baseColor.b = Math.max(0, Math.min(1, baseColor.b + variation * 0.3));
             const patchMat = new THREE.MeshStandardMaterial({
                 color: baseColor,
-                ...getSurfaceMaterialProps(this.texturePack, 'grass')
+                transparent: true,
+                opacity: 0.22,
+                depthWrite: false,
+                ...getSurfaceMaterialProps(this.texturePack, 'grass'),
+                roughness: 0.97,
+                metalness: 0.01
             });
             const patch = new THREE.Mesh(patchGeo, patchMat);
             patch.rotation.x = -Math.PI / 2;
+            patch.rotation.z = Math.random() * Math.PI;
+            const sx = 0.74 + Math.random() * 0.56;
+            patch.scale.set(sx, 1, 1 / sx);
             patch.position.set(
                 (Math.random() - 0.5) * 70,
-                0.015,
+                0.012 + i * 0.00003,
                 (Math.random() - 0.5) * 70
             );
             patch.receiveShadow = true;
@@ -297,7 +327,7 @@ export class World {
         this.pathPatches.forEach(p => this.scene.remove(p));
         this.pathPatches = [];
 
-        // Dirt trail as soft blobs instead of one large transparent plane.
+        // Dirt trail built from layered soft blobs.
         const pathPreset = LIGHTING_PROFILE.path;
         const steps = pathPreset.steps;
         for (let i = 0; i < steps; i++) {
@@ -305,14 +335,17 @@ export class World {
             const px = THREE.MathUtils.lerp(this.truckPos.x, this.housePos.x, t) + (Math.random() - 0.5) * pathPreset.jitter;
             const pz = THREE.MathUtils.lerp(this.truckPos.z, this.housePos.z, t) + (Math.random() - 0.5) * pathPreset.jitter;
             const radius = pathPreset.radius.min + Math.random() * (pathPreset.radius.max - pathPreset.radius.min);
+            const trailColor = new THREE.Color(0xb88e54).lerp(new THREE.Color(0xd2ae74), Math.sin(t * Math.PI) * 0.35);
 
-            const patchGeo = new THREE.CircleGeometry(radius, 10);
+            const patchGeo = new THREE.CircleGeometry(radius, 22);
             const patchMat = new THREE.MeshStandardMaterial({
-                color: 0xc7a05a,
+                color: trailColor,
                 transparent: true,
-                opacity: pathPreset.opacity,
+                opacity: pathPreset.opacity * (0.86 + Math.sin(t * Math.PI) * 0.25),
                 depthWrite: false,
-                ...getSurfaceMaterialProps(this.texturePack, 'dirt')
+                ...getSurfaceMaterialProps(this.texturePack, 'dirt'),
+                roughness: 0.92,
+                metalness: 0.01
             });
             const patch = new THREE.Mesh(patchGeo, patchMat);
             patch.rotation.x = -Math.PI / 2;
@@ -320,6 +353,22 @@ export class World {
             patch.renderOrder = 20 + i;
             this.scene.add(patch);
             this.pathPatches.push(patch);
+
+            const highlightGeo = new THREE.CircleGeometry(radius * 0.56, 16);
+            const highlightMat = new THREE.MeshStandardMaterial({
+                color: 0xe0c188,
+                transparent: true,
+                opacity: pathPreset.opacity * 0.32,
+                depthWrite: false,
+                roughness: 0.9,
+                metalness: 0.01
+            });
+            const highlight = new THREE.Mesh(highlightGeo, highlightMat);
+            highlight.rotation.x = -Math.PI / 2;
+            highlight.position.set(px, pathPreset.yBase + i * pathPreset.yStep + 0.00035, pz);
+            highlight.renderOrder = 40 + i;
+            this.scene.add(highlight);
+            this.pathPatches.push(highlight);
         }
     }
 
@@ -537,20 +586,11 @@ export class World {
 
         // Update vertex-colored ground
         if (this.groundMesh) {
-            const posAttr = this.groundMesh.geometry.attributes.position;
-            const colorAttr = this.groundMesh.geometry.attributes.color;
-            const baseColor = new THREE.Color(theme.ground);
-            for (let i = 0; i < posAttr.count; i++) {
-                const c = baseColor.clone();
-                c.offsetHSL(
-                    (Math.random() - 0.5) * 0.04,
-                    (Math.random() - 0.5) * 0.08,
-                    (Math.random() - 0.5) * 0.06
-                );
-                colorAttr.setXYZ(i, c.r, c.g, c.b);
-            }
-            colorAttr.needsUpdate = true;
-            this.groundMesh.material.map = null;
+            this._applyGroundVertexColors(theme);
+            const grassSurface = getSurfaceMaterialProps(this.texturePack, 'grass');
+            this.groundMesh.material.map = grassSurface.map || null;
+            this.groundMesh.material.roughness = grassSurface.roughness ?? 0.95;
+            this.groundMesh.material.metalness = grassSurface.metalness ?? 0.02;
             this.groundMesh.material.needsUpdate = true;
         }
         if (this.ambientLight) {
