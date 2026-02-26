@@ -48,6 +48,8 @@ export class World {
         this.houseGlowLight = null;
         this.truckBeacon = null;
         this.houseBeacon = null;
+        this.truckContactShadow = null;
+        this.houseContactShadow = null;
         this.pathPatches = [];
         this.zoneIndicators = [];
         this._fxPulseTime = 0;
@@ -163,6 +165,7 @@ export class World {
         this._createZoneIndicator(this.truckPos, this.truckZoneRadius, 0xff8c00, theme);
         this._createZoneIndicator(this.housePos, this.houseZoneRadius, 0x27ae60, theme);
         this._createArcadeBeacons();
+        this._createContactShadows();
 
         // Decorations (trees, rocks etc.)
         this._addDecorations(level);
@@ -279,6 +282,11 @@ export class World {
                 0,
                 (Math.random() - 0.5) * 55
             );
+            tuft.userData.kind = 'tuft';
+            tuft.userData.swayPhase = Math.random() * Math.PI * 2;
+            tuft.userData.swayAmp = 0.08 + Math.random() * 0.06;
+            tuft.userData.baseRotX = (Math.random() - 0.5) * 0.06;
+            tuft.userData.baseRotZ = (Math.random() - 0.5) * 0.06;
             this.scene.add(tuft);
             this.grassDetails.push(tuft);
         }
@@ -369,6 +377,22 @@ export class World {
             highlight.renderOrder = 40 + i;
             this.scene.add(highlight);
             this.pathPatches.push(highlight);
+
+            const fringeGeo = new THREE.CircleGeometry(radius * 1.45, 20);
+            const fringeMat = new THREE.MeshStandardMaterial({
+                color: 0x6a5432,
+                transparent: true,
+                opacity: pathPreset.opacity * 0.16,
+                depthWrite: false,
+                roughness: 0.94,
+                metalness: 0.01
+            });
+            const fringe = new THREE.Mesh(fringeGeo, fringeMat);
+            fringe.rotation.x = -Math.PI / 2;
+            fringe.position.set(px, pathPreset.yBase + i * pathPreset.yStep - 0.0001, pz);
+            fringe.renderOrder = 8 + i;
+            this.scene.add(fringe);
+            this.pathPatches.push(fringe);
         }
     }
 
@@ -410,7 +434,80 @@ export class World {
         disc.position.set(pos.x, zonePreset.yDisc, pos.z);
         disc.renderOrder = 39;
         this.scene.add(disc);
-        this.zoneIndicators.push({ ring, disc, baseRingOpacity: theme.ringOpacity, baseDiscOpacity: theme.discOpacity });
+
+        const dashGeo = new THREE.RingGeometry(radius + 0.22, radius + 0.34, 48, 1);
+        const dashMat = new THREE.MeshStandardMaterial({
+            color,
+            emissive: new THREE.Color(color).multiplyScalar(0.35),
+            emissiveIntensity: 0.32,
+            transparent: true,
+            opacity: theme.ringOpacity * 0.48,
+            roughness: 0.38,
+            metalness: 0.08,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const dash = new THREE.Mesh(dashGeo, dashMat);
+        dash.rotation.x = -Math.PI / 2;
+        dash.position.set(pos.x, zonePreset.yRing + 0.0015, pos.z);
+        dash.renderOrder = 41;
+        this.scene.add(dash);
+
+        const rippleGeo = new THREE.RingGeometry(radius * 0.65, radius * 0.7, 42);
+        const rippleMat = new THREE.MeshStandardMaterial({
+            color,
+            emissive: new THREE.Color(color).multiplyScalar(0.24),
+            emissiveIntensity: 0.26,
+            transparent: true,
+            opacity: theme.discOpacity * 0.68,
+            roughness: 0.46,
+            metalness: 0.04,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+        ripple.rotation.x = -Math.PI / 2;
+        ripple.position.set(pos.x, zonePreset.yDisc + 0.0012, pos.z);
+        ripple.renderOrder = 42;
+        this.scene.add(ripple);
+
+        this.zoneIndicators.push({
+            ring,
+            disc,
+            dash,
+            ripple,
+            baseRingOpacity: theme.ringOpacity,
+            baseDiscOpacity: theme.discOpacity,
+            baseDashOpacity: theme.ringOpacity * 0.48,
+            baseRippleOpacity: theme.discOpacity * 0.68
+        });
+    }
+
+    _createContactShadows() {
+        if (this.truckContactShadow) this.scene.remove(this.truckContactShadow);
+        if (this.houseContactShadow) this.scene.remove(this.houseContactShadow);
+
+        const buildShadow = (radius, opacity) => new THREE.Mesh(
+            new THREE.CircleGeometry(radius, 28),
+            new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity,
+                depthWrite: false
+            })
+        );
+
+        this.truckContactShadow = buildShadow(2.08, 0.15);
+        this.truckContactShadow.rotation.x = -Math.PI / 2;
+        this.truckContactShadow.position.set(this.truckPos.x, 0.022, this.truckPos.z);
+        this.truckContactShadow.renderOrder = 12;
+        this.scene.add(this.truckContactShadow);
+
+        this.houseContactShadow = buildShadow(2.36, 0.17);
+        this.houseContactShadow.rotation.x = -Math.PI / 2;
+        this.houseContactShadow.position.set(this.housePos.x, 0.022, this.housePos.z);
+        this.houseContactShadow.renderOrder = 12;
+        this.scene.add(this.houseContactShadow);
     }
 
     _createArcadeBeacons() {
@@ -646,6 +743,14 @@ export class World {
             zone.baseDiscOpacity = theme.discOpacity;
             zone.ring.material.opacity = theme.ringOpacity;
             zone.disc.material.opacity = theme.discOpacity;
+            if (zone?.dash?.material) {
+                zone.baseDashOpacity = theme.ringOpacity * 0.48;
+                zone.dash.material.opacity = zone.baseDashOpacity;
+            }
+            if (zone?.ripple?.material) {
+                zone.baseRippleOpacity = theme.discOpacity * 0.68;
+                zone.ripple.material.opacity = zone.baseRippleOpacity;
+            }
         });
     }
 
@@ -798,11 +903,37 @@ export class World {
             this.truckBeacon.material.emissiveIntensity = 1.08 + Math.sin(this._fxPulseTime * 2.9) * 0.26;
             this.houseBeacon.material.emissiveIntensity = 1.02 + Math.sin(this._fxPulseTime * 2.3 + 1.6) * 0.24;
         }
+        if (this.truckContactShadow?.material && this.houseContactShadow?.material) {
+            this.truckContactShadow.material.opacity = 0.14 + Math.sin(this._fxPulseTime * 1.9) * 0.022;
+            this.houseContactShadow.material.opacity = 0.16 + Math.sin(this._fxPulseTime * 1.6 + 0.8) * 0.02;
+        }
+
+        this.grassDetails.forEach((detail) => {
+            if (detail?.userData?.kind !== 'tuft') return;
+            const phase = detail.userData.swayPhase || 0;
+            const amp = detail.userData.swayAmp || 0.08;
+            const baseRotX = detail.userData.baseRotX || 0;
+            const baseRotZ = detail.userData.baseRotZ || 0;
+            const sway = Math.sin(this._fxPulseTime * 2.7 + phase) * amp;
+            detail.rotation.x = baseRotX + sway * 0.35;
+            detail.rotation.z = baseRotZ + sway;
+        });
+
         this.zoneIndicators.forEach((zone, idx) => {
             if (!zone?.ring?.material || !zone?.disc?.material) return;
             const pulse = 1 + Math.sin(this._fxPulseTime * 2.1 + idx) * 0.08;
             zone.ring.material.opacity = zone.baseRingOpacity * pulse;
-            zone.disc.material.opacity = zone.baseDiscOpacity * pulse;
+            zone.disc.material.opacity = zone.baseDiscOpacity * (0.88 + Math.sin(this._fxPulseTime * 1.7 + idx * 0.6) * 0.14);
+            if (zone?.dash?.material) {
+                zone.dash.rotation.z += 0.19 * dt * (1 + idx * 0.08);
+                zone.dash.material.opacity = zone.baseDashOpacity * (0.9 + Math.sin(this._fxPulseTime * 2.8 + idx) * 0.14);
+            }
+            if (zone?.ripple?.material && zone?.ripple?.scale) {
+                const cycle = (this._fxPulseTime * 0.58 + idx * 0.33) % 1;
+                const s = 0.84 + cycle * 0.62;
+                zone.ripple.scale.set(s, s, s);
+                zone.ripple.material.opacity = zone.baseRippleOpacity * (1 - cycle) * 0.92;
+            }
         });
     }
 }

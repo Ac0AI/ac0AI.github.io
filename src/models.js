@@ -350,6 +350,15 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
             _ensureColorMapColorSpace(next);
             if (next.color) {
                 next.color.lerp(target, kind === 'dog' ? 0.54 : 0.62);
+                if (kind === 'sheep') {
+                    const hsl = { h: 0, s: 0, l: 0 };
+                    next.color.getHSL(hsl);
+                    next.color.setHSL(
+                        hsl.h,
+                        THREE.MathUtils.clamp(hsl.s * 0.28 + 0.03, 0.02, 0.16),
+                        THREE.MathUtils.clamp(Math.max(hsl.l, 0.84), 0.84, 0.96)
+                    );
+                }
             }
             if (typeof next.roughness === 'number') {
                 next.roughness = THREE.MathUtils.clamp(next.roughness, 0.52, 0.94);
@@ -363,14 +372,193 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
             }
             if ('emissive' in next) {
                 next.emissive = next.emissive || new THREE.Color(0x000000);
-                next.emissive.lerp(palette.emissive, 0.08);
-                next.emissiveIntensity = Math.max(0.04, next.emissiveIntensity || 0.04);
+                if (kind === 'sheep') {
+                    next.emissive.lerp(new THREE.Color(0xffffff), 0.06);
+                    next.emissiveIntensity = Math.max(0.07, next.emissiveIntensity || 0.07);
+                } else {
+                    next.emissive.lerp(palette.emissive, 0.08);
+                    next.emissiveIntensity = Math.max(0.04, next.emissiveIntensity || 0.04);
+                }
             }
             next.envMapIntensity = Math.max(0.22, next.envMapIntensity || 0.22);
             return next;
         });
         node.material = Array.isArray(node.material) ? nextMats : nextMats[0];
     });
+}
+
+function _markSheepAccessory(mesh) {
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.userData = { ...mesh.userData, noBossTint: true };
+    return mesh;
+}
+
+function _addSheepStylePass(root) {
+    if (!root) return;
+    root.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(root);
+    _tmpBox.getSize(_tmpSize);
+    if (
+        !Number.isFinite(_tmpSize.x) || !Number.isFinite(_tmpSize.y) || !Number.isFinite(_tmpSize.z)
+        || _tmpSize.y < 0.08
+    ) {
+        return;
+    }
+
+    const width = Math.max(0.22, _tmpSize.x);
+    const height = Math.max(0.22, _tmpSize.y);
+    const depth = Math.max(0.22, _tmpSize.z);
+    const unit = Math.max(0.045, Math.min(width, height, depth) * 0.16);
+    const eyeX = width * 0.18;
+    const faceY = height * 0.64;
+    const faceZ = depth * 0.35;
+
+    const deco = new THREE.Group();
+    deco.name = 'sheep-style-pass';
+
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.48, metalness: 0.0 });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.36, metalness: 0.08 });
+    const blushMat = new THREE.MeshStandardMaterial({ color: 0xff93b7, roughness: 0.7, metalness: 0.0 });
+    const smileMat = new THREE.MeshStandardMaterial({ color: 0x6f3b31, roughness: 0.62, metalness: 0.02 });
+    const bowMat = new THREE.MeshStandardMaterial({ color: 0xff6767, roughness: 0.56, metalness: 0.08 });
+
+    const eyeGeo = new THREE.SphereGeometry(unit, 12, 10);
+    const pupilGeo = new THREE.SphereGeometry(unit * 0.45, 10, 8);
+    const blushGeo = new THREE.SphereGeometry(unit * 0.62, 10, 8);
+
+    const eyeL = _markSheepAccessory(new THREE.Mesh(eyeGeo, eyeMat));
+    eyeL.position.set(-eyeX, faceY, faceZ);
+    deco.add(eyeL);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = eyeX;
+    deco.add(eyeR);
+
+    const pupilL = _markSheepAccessory(new THREE.Mesh(pupilGeo, pupilMat));
+    pupilL.position.set(-eyeX, faceY - unit * 0.06, faceZ + unit * 0.72);
+    pupilL.userData.baseX = pupilL.position.x;
+    pupilL.userData.baseY = pupilL.position.y;
+    deco.add(pupilL);
+    const pupilR = pupilL.clone();
+    pupilR.position.x = eyeX;
+    pupilR.userData.baseX = pupilR.position.x;
+    pupilR.userData.baseY = pupilR.position.y;
+    deco.add(pupilR);
+
+    const blushL = _markSheepAccessory(new THREE.Mesh(blushGeo, blushMat));
+    blushL.scale.set(1.22, 0.72, 0.55);
+    blushL.position.set(-eyeX * 1.32, faceY - unit * 0.56, faceZ + unit * 0.32);
+    deco.add(blushL);
+    const blushR = blushL.clone();
+    blushR.position.x = eyeX * 1.32;
+    deco.add(blushR);
+
+    const smile = _markSheepAccessory(
+        new THREE.Mesh(new THREE.TorusGeometry(unit * 0.78, unit * 0.18, 8, 20, Math.PI), smileMat)
+    );
+    smile.position.set(0, faceY - unit * 1.08, faceZ + unit * 0.56);
+    smile.rotation.z = Math.PI;
+    deco.add(smile);
+
+    const bowKnot = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.34, 10, 8), bowMat));
+    bowKnot.position.set(0, height * 0.4, depth * 0.28);
+    deco.add(bowKnot);
+    const bowWingL = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.56, 10, 8), bowMat));
+    bowWingL.scale.set(1.28, 0.6, 0.55);
+    bowWingL.position.set(-unit * 0.88, height * 0.4, depth * 0.28);
+    deco.add(bowWingL);
+    const bowWingR = bowWingL.clone();
+    bowWingR.position.x = unit * 0.88;
+    deco.add(bowWingR);
+
+    const fluffMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        ...getSurfaceMaterialProps(texturePack, 'fabric'),
+        roughness: 0.94,
+        metalness: 0.0
+    });
+    const fluffCount = 12;
+    for (let i = 0; i < fluffCount; i++) {
+        const t = i / fluffCount;
+        const angle = t * Math.PI * 2;
+        const radius = (0.34 + Math.sin(t * Math.PI * 3) * 0.08) * width;
+        const puff = _markSheepAccessory(
+            new THREE.Mesh(
+                new THREE.SphereGeometry(unit * (0.62 + Math.random() * 0.34), 10, 8),
+                fluffMat
+            )
+        );
+        puff.position.set(
+            Math.cos(angle) * radius,
+            height * (0.5 + (Math.random() - 0.5) * 0.12),
+            Math.sin(angle) * (depth * 0.3)
+        );
+        puff.scale.set(1.2, 0.92, 1.1);
+        deco.add(puff);
+    }
+    const topFluff = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.9, 11, 9), fluffMat));
+    topFluff.scale.set(2.05, 0.9, 1.55);
+    topFluff.position.set(0, height * 0.72, 0);
+    deco.add(topFluff);
+
+    const scarfMat = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.58, metalness: 0.06 });
+    const scarf = _markSheepAccessory(new THREE.Mesh(new THREE.TorusGeometry(width * 0.28, unit * 0.28, 10, 22), scarfMat));
+    scarf.position.set(0, height * 0.48, 0);
+    scarf.rotation.x = Math.PI / 2;
+    scarf.userData.baseRotZ = 0;
+    deco.add(scarf);
+    const scarfTag = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.28, 10, 8), new THREE.MeshStandardMaterial({
+        color: 0xffd166,
+        roughness: 0.44,
+        metalness: 0.18
+    })));
+    scarfTag.position.set(0, height * 0.44, depth * 0.34);
+    deco.add(scarfTag);
+
+    const star = _markSheepAccessory(new THREE.Mesh(new THREE.OctahedronGeometry(unit * 0.65, 0), new THREE.MeshStandardMaterial({
+        color: 0xffd84d,
+        emissive: 0x503500,
+        emissiveIntensity: 0.42,
+        roughness: 0.4,
+        metalness: 0.12
+    })));
+    star.position.set(0, height * 1.12, 0);
+    star.userData.baseY = star.position.y;
+    deco.add(star);
+
+    let hatCone = null;
+    if (Math.random() < 0.74) {
+        const hatPalette = [0x00b4d8, 0xff7f50, 0x52b788, 0xff4d6d, 0x7b7fda];
+        const hatColor = hatPalette[Math.floor(Math.random() * hatPalette.length)];
+        const hatMat = new THREE.MeshStandardMaterial({
+            color: hatColor,
+            roughness: 0.5,
+            metalness: 0.1
+        });
+        hatCone = _markSheepAccessory(new THREE.Mesh(new THREE.ConeGeometry(unit * 0.9, unit * 2.8, 14), hatMat));
+        hatCone.position.set((Math.random() - 0.5) * width * 0.12, height * 0.95, -depth * 0.04);
+        hatCone.rotation.z = (Math.random() - 0.5) * 0.42;
+        hatCone.userData.baseRotZ = hatCone.rotation.z;
+        deco.add(hatCone);
+
+        const brim = _markSheepAccessory(new THREE.Mesh(new THREE.CylinderGeometry(unit * 1.06, unit * 1.14, unit * 0.2, 14), hatMat));
+        brim.position.set(hatCone.position.x, height * 0.81, -depth * 0.04);
+        deco.add(brim);
+
+        const pomMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, roughness: 0.56, metalness: 0.0 });
+        const pom = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.35, 10, 8), pomMat));
+        pom.position.set(hatCone.position.x, height * 1.14, -depth * 0.04);
+        deco.add(pom);
+    }
+
+    root.add(deco);
+    root.userData.sheepStyle = {
+        pupils: [pupilL, pupilR],
+        hat: hatCone,
+        smile,
+        scarf,
+        star
+    };
 }
 
 function buildStandardMaterial(color, defaults, opts = {}) {
@@ -542,6 +730,341 @@ function _createStylizedCourierPlayer() {
     return group;
 }
 
+function _finalizeStaticRoleModel(group, type, opts = {}) {
+    if (!group) return null;
+    const targetHeight = opts.targetHeight || null;
+    const maxExtent = opts.maxExtent || null;
+
+    group.updateWorldMatrix(true, true);
+    _tmpBox.setFromObject(group);
+    _tmpBox.getSize(_tmpSize);
+
+    const safeHeight = Math.max(0.0001, _tmpSize.y);
+    if (targetHeight) {
+        group.scale.multiplyScalar(targetHeight / safeHeight);
+        group.updateWorldMatrix(true, true);
+        _tmpBox.setFromObject(group);
+        _tmpBox.getSize(_tmpSize);
+    }
+
+    if (maxExtent) {
+        const extent = Math.max(_tmpSize.x, _tmpSize.z, 0.0001);
+        if (extent > maxExtent) {
+            group.scale.multiplyScalar(maxExtent / extent);
+            group.updateWorldMatrix(true, true);
+            _tmpBox.setFromObject(group);
+        }
+    }
+
+    _tmpBox.getCenter(_tmpCenter);
+    group.position.x -= _tmpCenter.x;
+    group.position.z -= _tmpCenter.z;
+    group.position.y -= _tmpBox.min.y;
+
+    group.traverse((node) => {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((material) => _ensureColorMapColorSpace(material));
+    });
+
+    group.userData.externalModel = true;
+    group.userData.type = type;
+    return group;
+}
+
+function _createLowpolyMovingTruck() {
+    const group = new THREE.Group();
+    const palette = {
+        cabin: 0xf6fbff,
+        cargo: 0xfbfdff,
+        accent: 0x1f6ecf,
+        accentSoft: 0x5cc2ff,
+        stripe: 0xffb14a,
+        trim: 0x1e2f45,
+        glass: 0x9dd9ff,
+        rubber: 0x1a1f28,
+        metal: 0x8ea0b1
+    };
+
+    const chassis = box(2.36, 0.24, 4.18, 0x2b3748, { surface: 'metal', roughness: 0.56, metalness: 0.28 });
+    chassis.position.y = 0.38;
+    group.add(chassis);
+
+    const cargo = box(2.12, 1.52, 2.6, palette.cargo, { surface: 'painted', roughness: 0.58, metalness: 0.08 });
+    cargo.position.set(0, 1.3, 0.62);
+    group.add(cargo);
+
+    const cargoStripe = box(2.18, 0.22, 2.62, palette.accent, { surface: 'painted', roughness: 0.54 });
+    cargoStripe.position.set(0, 1.68, 0.62);
+    group.add(cargoStripe);
+
+    const cargoLowerStripe = box(2.18, 0.14, 2.62, palette.stripe, { surface: 'painted', roughness: 0.5 });
+    cargoLowerStripe.position.set(0, 0.82, 0.62);
+    group.add(cargoLowerStripe);
+
+    const cabin = box(1.9, 1.08, 1.34, palette.cabin, { surface: 'painted', roughness: 0.56, metalness: 0.09 });
+    cabin.position.set(0, 1.14, -1.48);
+    group.add(cabin);
+
+    const hood = box(1.84, 0.46, 0.94, palette.cabin, { surface: 'painted', roughness: 0.55, metalness: 0.1 });
+    hood.position.set(0, 0.8, -2.05);
+    group.add(hood);
+
+    const roofCap = box(1.64, 0.2, 1.02, palette.accentSoft, { surface: 'painted', roughness: 0.52, metalness: 0.12 });
+    roofCap.position.set(0, 1.73, -1.53);
+    group.add(roofCap);
+
+    const windshieldMat = new THREE.MeshStandardMaterial({
+        color: palette.glass,
+        emissive: 0x1b4a66,
+        emissiveIntensity: 0.18,
+        roughness: 0.18,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.84
+    });
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.54, 0.1), windshieldMat);
+    windshield.position.set(0, 1.35, -1.96);
+    windshield.rotation.x = -0.25;
+    group.add(windshield);
+
+    const sideWindowL = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.42, 0.08), windshieldMat.clone());
+    sideWindowL.position.set(-0.93, 1.35, -1.5);
+    sideWindowL.rotation.y = Math.PI / 2;
+    group.add(sideWindowL);
+    const sideWindowR = sideWindowL.clone();
+    sideWindowR.position.x = 0.93;
+    group.add(sideWindowR);
+
+    const grille = box(1.36, 0.26, 0.1, palette.trim, { surface: 'metal', roughness: 0.48, metalness: 0.32 });
+    grille.position.set(0, 0.78, -2.5);
+    group.add(grille);
+
+    const bumper = box(1.8, 0.16, 0.16, palette.metal, { surface: 'metal', roughness: 0.4, metalness: 0.45 });
+    bumper.position.set(0, 0.46, -2.44);
+    group.add(bumper);
+
+    const headlightL = box(0.26, 0.12, 0.09, 0xffe7a8, { surface: 'painted', roughness: 0.28, metalness: 0.2 });
+    headlightL.position.set(-0.58, 0.78, -2.5);
+    group.add(headlightL);
+    const headlightR = headlightL.clone();
+    headlightR.position.x = 0.58;
+    group.add(headlightR);
+
+    const signalL = box(0.18, 0.1, 0.08, 0xff9d47, { surface: 'painted', roughness: 0.32, metalness: 0.14 });
+    signalL.position.set(-0.86, 0.72, -2.48);
+    group.add(signalL);
+    const signalR = signalL.clone();
+    signalR.position.x = 0.86;
+    group.add(signalR);
+
+    const sideBrandL = box(0.08, 0.62, 1.16, palette.accent, { surface: 'painted', roughness: 0.52, metalness: 0.1 });
+    sideBrandL.position.set(-1.12, 1.32, 0.62);
+    group.add(sideBrandL);
+    const sideBrandR = sideBrandL.clone();
+    sideBrandR.position.x = 1.12;
+    group.add(sideBrandR);
+
+    for (let i = 0; i < 3; i++) {
+        const line = box(0.09, 0.08, 0.76 - i * 0.16, 0xffffff, { surface: 'painted', roughness: 0.5 });
+        line.position.set(-1.17, 1.2 + i * 0.14, 0.62);
+        group.add(line);
+        const lineR = line.clone();
+        lineR.position.x = 1.17;
+        group.add(lineR);
+    }
+
+    const rearDoorL = box(0.98, 1.22, 0.08, 0xf7fbff, { surface: 'painted', roughness: 0.62, metalness: 0.08 });
+    rearDoorL.position.set(-0.53, 1.24, 1.94);
+    group.add(rearDoorL);
+    const rearDoorR = rearDoorL.clone();
+    rearDoorR.position.x = 0.53;
+    group.add(rearDoorR);
+    const rearJoin = box(0.08, 1.22, 0.09, palette.accentSoft, { surface: 'painted', roughness: 0.5 });
+    rearJoin.position.set(0, 1.24, 1.95);
+    group.add(rearJoin);
+
+    const plate = box(0.62, 0.12, 0.08, 0xf4f8ff, { surface: 'painted', roughness: 0.5, metalness: 0.12 });
+    plate.position.set(0, 0.57, 1.98);
+    group.add(plate);
+
+    const mirrorL = box(0.08, 0.18, 0.28, 0x1f2f42, { surface: 'metal', roughness: 0.48, metalness: 0.35 });
+    mirrorL.position.set(-1.03, 1.29, -1.88);
+    group.add(mirrorL);
+    const mirrorR = mirrorL.clone();
+    mirrorR.position.x = 1.03;
+    group.add(mirrorR);
+
+    const wheelMat = new THREE.MeshStandardMaterial({ color: palette.rubber, roughness: 0.9, metalness: 0.05 });
+    const hubMat = new THREE.MeshStandardMaterial({ color: palette.metal, roughness: 0.4, metalness: 0.45 });
+    const addWheel = (x, z) => {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.46, 0.34, 12), wheelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.46, z);
+        group.add(wheel);
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 10), hubMat);
+        hub.rotation.z = Math.PI / 2;
+        hub.position.set(x, 0.46, z);
+        group.add(hub);
+    };
+    addWheel(-1.02, -1.68);
+    addWheel(1.02, -1.68);
+    addWheel(-1.02, 1.45);
+    addWheel(1.02, 1.45);
+
+    return _finalizeStaticRoleModel(group, 'truck', { targetHeight: 2.05, maxExtent: 4.4 });
+}
+
+function _createSwedishCottageHouse() {
+    const group = new THREE.Group();
+    const palette = {
+        wall: 0xa4372b,      // Falu red
+        trim: 0xf2efe7,
+        roof: 0x3f2620,
+        roofHighlight: 0x78443a,
+        foundation: 0x8a8f97,
+        door: 0x7f5632,
+        glass: 0xbbe7ff,
+        shutter: 0x23593f
+    };
+
+    const foundation = box(3.56, 0.34, 3.14, palette.foundation, { surface: 'stone', roughness: 0.76, metalness: 0.05 });
+    foundation.position.y = 0.17;
+    group.add(foundation);
+
+    const walls = box(3.08, 1.84, 2.66, palette.wall, { surface: 'painted', roughness: 0.72, metalness: 0.05 });
+    walls.position.y = 1.27;
+    group.add(walls);
+
+    const upperGable = box(2.35, 0.58, 2.66, palette.wall, { surface: 'painted', roughness: 0.7, metalness: 0.05 });
+    upperGable.position.y = 2.03;
+    group.add(upperGable);
+
+    const roofL = box(1.95, 0.2, 2.98, palette.roof, { surface: 'wood', roughness: 0.66, metalness: 0.06 });
+    roofL.position.set(-0.79, 2.42, 0);
+    roofL.rotation.z = Math.PI * 0.17;
+    group.add(roofL);
+    const roofR = roofL.clone();
+    roofR.position.x = 0.79;
+    roofR.rotation.z = -Math.PI * 0.17;
+    group.add(roofR);
+
+    const ridge = box(0.2, 0.12, 3.0, palette.roofHighlight, { surface: 'wood', roughness: 0.62 });
+    ridge.position.y = 2.7;
+    group.add(ridge);
+
+    const chimney = box(0.34, 0.92, 0.34, 0xd5c8b8, { surface: 'stone', roughness: 0.72, metalness: 0.04 });
+    chimney.position.set(0.52, 2.98, -0.26);
+    group.add(chimney);
+    const chimneyTop = box(0.42, 0.1, 0.42, 0x5a5d66, { surface: 'stone', roughness: 0.74, metalness: 0.05 });
+    chimneyTop.position.set(0.52, 3.5, -0.26);
+    group.add(chimneyTop);
+
+    const corners = [
+        [-1.52, 1.27, -1.28], [1.52, 1.27, -1.28], [-1.52, 1.27, 1.28], [1.52, 1.27, 1.28]
+    ];
+    corners.forEach(([x, y, z]) => {
+        const trim = box(0.12, 1.9, 0.14, palette.trim, { surface: 'painted', roughness: 0.58, metalness: 0.05 });
+        trim.position.set(x, y, z);
+        group.add(trim);
+    });
+
+    const roofTrim = box(3.12, 0.1, 0.12, palette.trim, { surface: 'painted', roughness: 0.55 });
+    roofTrim.position.set(0, 2.13, 1.34);
+    group.add(roofTrim);
+    const roofTrimBack = roofTrim.clone();
+    roofTrimBack.position.z = -1.34;
+    group.add(roofTrimBack);
+
+    const doorFrame = box(0.74, 1.16, 0.14, palette.trim, { surface: 'painted', roughness: 0.56 });
+    doorFrame.position.set(0, 0.82, 1.4);
+    group.add(doorFrame);
+
+    const door = box(0.58, 1.02, 0.1, palette.door, { surface: 'wood', roughness: 0.72, metalness: 0.06 });
+    door.position.set(0, 0.82, 1.46);
+    group.add(door);
+    const knob = sphere(0.035, 0xc7b28e, { surface: 'metal', roughness: 0.4, metalness: 0.45 });
+    knob.position.set(0.2, 0.78, 1.52);
+    group.add(knob);
+
+    const porch = box(1.04, 0.14, 0.96, 0x8b6c45, { surface: 'wood', roughness: 0.78, metalness: 0.05 });
+    porch.position.set(0, 0.07, 1.72);
+    group.add(porch);
+    const step = box(0.82, 0.1, 0.42, 0x997650, { surface: 'wood', roughness: 0.79, metalness: 0.04 });
+    step.position.set(0, 0.05, 2.22);
+    group.add(step);
+
+    const addWindow = (x, y, z, rotY = 0) => {
+        const frame = box(0.72, 0.84, 0.12, palette.trim, { surface: 'painted', roughness: 0.56, metalness: 0.05 });
+        frame.position.set(x, y, z);
+        frame.rotation.y = rotY;
+        group.add(frame);
+
+        const paneMat = new THREE.MeshStandardMaterial({
+            color: palette.glass,
+            emissive: 0x3e7491,
+            emissiveIntensity: 0.19,
+            roughness: 0.2,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.86
+        });
+        const pane = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.66, 0.06), paneMat);
+        pane.position.set(x, y, z + Math.cos(rotY) * 0.04);
+        pane.rotation.y = rotY;
+        group.add(pane);
+
+        const mullionV = box(0.07, 0.68, 0.08, palette.trim, { surface: 'painted', roughness: 0.52 });
+        mullionV.position.set(x, y, z + Math.cos(rotY) * 0.05);
+        mullionV.rotation.y = rotY;
+        group.add(mullionV);
+        const mullionH = box(0.56, 0.07, 0.08, palette.trim, { surface: 'painted', roughness: 0.52 });
+        mullionH.position.set(x, y, z + Math.cos(rotY) * 0.05);
+        mullionH.rotation.y = rotY;
+        group.add(mullionH);
+
+        const shutterL = box(0.12, 0.8, 0.07, palette.shutter, { surface: 'painted', roughness: 0.64, metalness: 0.05 });
+        const shutterR = shutterL.clone();
+        if (Math.abs(rotY) < 0.2) {
+            shutterL.position.set(x - 0.42, y, z + 0.02);
+            shutterR.position.set(x + 0.42, y, z + 0.02);
+        } else {
+            shutterL.position.set(x + Math.sin(rotY) * 0.02, y, z - 0.42);
+            shutterR.position.set(x + Math.sin(rotY) * 0.02, y, z + 0.42);
+        }
+        shutterL.rotation.y = rotY;
+        shutterR.rotation.y = rotY;
+        group.add(shutterL);
+        group.add(shutterR);
+    };
+
+    addWindow(-0.86, 1.3, 1.4, 0);
+    addWindow(0.86, 1.3, 1.4, 0);
+    addWindow(-1.58, 1.3, 0.24, Math.PI / 2);
+    addWindow(1.58, 1.3, -0.28, Math.PI / 2);
+
+    const flagPole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 1.24, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.48, metalness: 0.35 })
+    );
+    flagPole.position.set(-1.95, 0.8, 1.25);
+    group.add(flagPole);
+    const flagBlue = box(0.48, 0.26, 0.05, 0x2166cc, { surface: 'painted', roughness: 0.46, metalness: 0.08 });
+    flagBlue.position.set(-1.7, 1.22, 1.25);
+    group.add(flagBlue);
+    const flagYellowV = box(0.08, 0.26, 0.055, 0xf3cf2f, { surface: 'painted', roughness: 0.42, metalness: 0.08 });
+    flagYellowV.position.set(-1.73, 1.22, 1.28);
+    group.add(flagYellowV);
+    const flagYellowH = box(0.48, 0.08, 0.055, 0xf3cf2f, { surface: 'painted', roughness: 0.42, metalness: 0.08 });
+    flagYellowH.position.set(-1.7, 1.22, 1.28);
+    group.add(flagYellowH);
+
+    return _finalizeStaticRoleModel(group, 'house', { targetHeight: 3.0, maxExtent: 3.9 });
+}
+
 // ============================================================
 // PLAYER — cute mover character
 // ============================================================
@@ -553,34 +1076,14 @@ export function createPlayer() {
 // TRUCK — delivery truck
 // ============================================================
 export function createTruck() {
-    const truckSpec = _specForType('truck');
-    const external = _tryCreateExternalRoleWithFallbacks('truck', {
-        ...truckSpec,
-        castShadow: true,
-        receiveShadow: true
-    });
-    if (external) {
-        external.userData.type = 'truck';
-        return external;
-    }
-    return null;
+    return _createLowpolyMovingTruck();
 }
 
 // ============================================================
 // HOUSE — cute little house
 // ============================================================
 export function createHouse() {
-    const buildingSpec = _specForType('building');
-    const external = _tryCreateExternalRoleWithFallbacks('building', {
-        ...buildingSpec,
-        castShadow: true,
-        receiveShadow: true
-    });
-    if (external) {
-        external.userData.type = 'house';
-        return external;
-    }
-    return null;
+    return _createSwedishCottageHouse();
 }
 
 // ============================================================
@@ -598,6 +1101,7 @@ export function createSheep(scale = 1) {
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
     _polishExternalAnimalMaterials(external, 'sheep');
+    _addSheepStylePass(external);
     external.userData.type = 'sheep';
     return external;
 }

@@ -5,3 +5,4 @@ assets/models/game/*.inspect.txt
 assets/models/extracted/
 assets/models/unity_source/
 .DS_Store
+node_modules/

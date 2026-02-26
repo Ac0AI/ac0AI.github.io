@@ -1,0 +1,26 @@
+{
+  "name": "flyttsmart-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No unit tests configured\"",
+    "playwright:install": "playwright install chromium",
+    "e2e:premium": "node tools/e2e/premium-check.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ac0AI/ac0AI.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Ac0AI/ac0AI.github.io/issues"
+  },
+  "homepage": "https://github.com/Ac0AI/ac0AI.github.io#readme",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}

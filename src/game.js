@@ -222,6 +222,7 @@ export class Game {
 
     _clearAll() {
         this._clearManagedTimeouts();
+        this.effects.clearTransient(this.scene);
         this.enemies.clearAll();
         this.powerups.clearAll();
         this._clearFurniture();
@@ -459,6 +460,7 @@ export class Game {
         if (roadkills && roadkills.length > 0) {
             roadkills.forEach(rk => {
                 this.audio.playSound('roadkill');
+                this.effects.spawnInteractionBurst(this.scene, rk.pos, rk.isBoss ? 'impactBoss' : 'impact');
 
                 // Add points
                 let basePoints = rk.isBoss ? 500 : 50;
@@ -718,6 +720,12 @@ export class Game {
                 this.scene.remove(this.carriedItem.model);
                 const idx = this.furnitureItems.indexOf(this.carriedItem);
                 if (idx >= 0) this.furnitureItems.splice(idx, 1);
+                this.effects.spawnInteractionBurst(
+                    this.scene,
+                    this.playerPos,
+                    this.carriedItem.isGold ? 'goldDeliver' : 'deliver'
+                );
+                this.effects.shake(140, 0.12);
                 this.carriedItem = null;
                 this._pulsePlayerAction('drop');
 
@@ -732,6 +740,7 @@ export class Game {
                 this.audio.playSynth('drop');
                 this.carriedItem.model.position.y = 0;
                 const droppedItem = this.carriedItem;
+                this.effects.spawnInteractionBurst(this.scene, droppedItem.model.position, 'drop');
                 this.carriedItem = null;
                 this._pulsePlayerAction('drop');
 
@@ -766,6 +775,7 @@ export class Game {
             if (closest) {
                 this.carriedItem = closest;
                 this.audio.playSynth('pickup');
+                this.effects.spawnInteractionBurst(this.scene, closest.model.position, 'pickup');
                 this._pulsePlayerAction('pickup');
             }
         }

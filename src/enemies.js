@@ -58,6 +58,15 @@ export class EnemyManager {
                 vx: (dx / dist) * speed,
                 vz: (dz / dist) * speed,
                 isBoss: false,
+                baseY: model.position.y,
+                animTime: Math.random() * Math.PI * 2,
+                animPhase: Math.random() * Math.PI * 2,
+                hopSpeed: 7.8 + Math.random() * 2.4,
+                hopAmp: (0.08 + Math.random() * 0.05) * sheepScale,
+                rollAmp: 0.07 + Math.random() * 0.04,
+                nodAmp: 0.05 + Math.random() * 0.03,
+                yawWiggleAmp: 0.04 + Math.random() * 0.03,
+                lookSpeed: 2.2 + Math.random() * 1.4,
             });
 
             // Face movement direction
@@ -87,6 +96,7 @@ export class EnemyManager {
         // Tint boss red (guard against imported models with material arrays / non-color materials)
         model.traverse((child) => {
             if (!child.isMesh || !child.material) return;
+            if (child.userData?.noBossTint) return;
             const mats = Array.isArray(child.material) ? child.material : [child.material];
             const tinted = mats.map((material) => {
                 if (!material || !material.isMaterial || !material.color) return material;
@@ -107,6 +117,15 @@ export class EnemyManager {
             vx: 0,
             vz: 0,
             isBoss: true,
+            baseY: model.position.y,
+            animTime: Math.random() * Math.PI * 2,
+            animPhase: Math.random() * Math.PI * 2,
+            hopSpeed: 6.2,
+            hopAmp: 0.2,
+            rollAmp: 0.05,
+            nodAmp: 0.04,
+            yawWiggleAmp: 0.03,
+            lookSpeed: 1.8,
         });
     }
 
@@ -117,6 +136,7 @@ export class EnemyManager {
 
         for (let i = this.sheep.length - 1; i >= 0; i--) {
             const s = this.sheep[i];
+            s.animTime = (s.animTime || 0) + dt;
 
             // Chasing behavior L3+
             if (currentLevel >= 3 && !s.isBoss) {
@@ -169,11 +189,40 @@ export class EnemyManager {
                 }
             }
 
-            // Face movement direction
-            s.model.rotation.y = Math.atan2(s.vx, s.vz);
+            // Face movement direction + playful sheep motion
+            const heading = Math.atan2(s.vx, s.vz);
+            const bob = Math.abs(Math.sin(s.animTime * (s.hopSpeed || 7.5) + (s.animPhase || 0))) * (s.hopAmp || 0.08);
+            s.model.position.y = (s.baseY || 0) + bob;
+            s.model.rotation.y = heading + Math.sin(s.animTime * (s.lookSpeed || 2.6) + (s.animPhase || 0)) * (s.yawWiggleAmp || 0.04);
+            s.model.rotation.z = Math.sin(s.animTime * ((s.hopSpeed || 7.5) * 0.68) + i) * (s.rollAmp || 0.08);
+            s.model.rotation.x = Math.sin(s.animTime * ((s.hopSpeed || 7.5) * 0.5) + (s.animPhase || 0) * 0.6) * (s.nodAmp || 0.06);
 
-            // Wobble animation
-            s.model.rotation.z = Math.sin(Date.now() * 0.008 + i) * 0.12;
+            const style = s.model.userData?.sheepStyle;
+            if (style?.pupils?.length) {
+                const lookX = Math.sin(s.animTime * ((s.lookSpeed || 2.6) + 0.9) + i) * 0.01;
+                const lookY = Math.cos(s.animTime * ((s.lookSpeed || 2.6) + 1.2) + i * 0.7) * 0.008;
+                style.pupils.forEach((pupil) => {
+                    if (!pupil) return;
+                    pupil.position.x = (pupil.userData.baseX || 0) + lookX;
+                    pupil.position.y = (pupil.userData.baseY || 0) + lookY;
+                });
+            }
+            if (style?.hat) {
+                style.hat.rotation.z = (style.hat.userData.baseRotZ || 0)
+                    + Math.sin(s.animTime * 5.8 + (s.animPhase || 0)) * 0.08;
+            }
+            if (style?.smile) {
+                style.smile.scale.y = 1 + Math.sin(s.animTime * 8 + i) * 0.08;
+            }
+            if (style?.scarf) {
+                style.scarf.rotation.z = (style.scarf.userData.baseRotZ || 0)
+                    + Math.sin(s.animTime * 4.6 + (s.animPhase || 0)) * 0.11;
+            }
+            if (style?.star) {
+                style.star.rotation.y += dt * 4.8;
+                style.star.position.y = (style.star.userData.baseY || 0)
+                    + Math.sin(s.animTime * 7.2 + (s.animPhase || 0)) * 0.05;
+            }
 
             // Out of bounds — remove
             if (Math.abs(s.model.position.x) > worldSize ||

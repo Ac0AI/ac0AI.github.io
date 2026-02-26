@@ -26,15 +26,68 @@ const quality = {
     particleCount: lowPowerMode ? 84 : 120,
 };
 
+const orientationLockEl = document.getElementById('orientation-lock');
+const immersiveBtn = document.getElementById('immersive-btn');
+const orientationHintEl = document.querySelector('.orientation-hint');
+
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function shouldForceLandscapeMode() {
+    return isIOSDevice()
+        || window.matchMedia('(pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches;
+}
+
+function getViewportSize() {
+    const vv = window.visualViewport;
+    const width = Math.max(1, Math.round(vv?.width || window.innerWidth));
+    const height = Math.max(1, Math.round(vv?.height || window.innerHeight));
+    return { width, height };
+}
+
+function isLandscapeViewport() {
+    const { width, height } = getViewportSize();
+    return width >= height;
+}
+
+async function requestImmersiveMode() {
+    const root = document.documentElement;
+    try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (typeof root.requestFullscreen === 'function') {
+                await root.requestFullscreen({ navigationUI: 'hide' });
+            } else if (typeof root.webkitRequestFullscreen === 'function') {
+                root.webkitRequestFullscreen();
+            }
+        }
+    } catch (_) { }
+
+    try {
+        if (screen.orientation?.lock) {
+            await screen.orientation.lock('landscape');
+        }
+    } catch (_) { }
+}
+
+if (immersiveBtn) {
+    immersiveBtn.addEventListener('click', () => {
+        requestImmersiveMode();
+    });
+}
+
 // Renderer
 const renderer = new THREE.WebGLRenderer({
     antialias: false, // FXAA pass handles edge smoothing at lower GPU cost.
     alpha: false,
     powerPreference: 'high-performance'
 });
+const initialViewport = getViewportSize();
 let activePixelRatio = Math.min(window.devicePixelRatio, quality.maxPixelRatio);
 renderer.setPixelRatio(activePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(initialViewport.width, initialViewport.height);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = quality.lowPower ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -53,7 +106,7 @@ document.getElementById('game-container').appendChild(vignette);
 
 // Camera — Orthographic isometric
 const frustumSize = 28;
-const aspect = window.innerWidth / window.innerHeight;
+const aspect = initialViewport.width / initialViewport.height;
 const camera = new THREE.OrthographicCamera(
     frustumSize * aspect / -2,
     frustumSize * aspect / 2,
@@ -81,7 +134,7 @@ composer.addPass(new RenderPass(scene, camera));
 const bloomPass = quality.lowPower
     ? null
     : new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        new THREE.Vector2(initialViewport.width, initialViewport.height),
         postfx.bloom.strength.normal,
         postfx.bloom.radius.normal,
         postfx.bloom.threshold.normal
@@ -92,8 +145,8 @@ if (bloomPass) {
 
 const fxaaPass = new ShaderPass(FXAAShader);
 fxaaPass.material.uniforms.resolution.value.set(
-    1 / (window.innerWidth * activePixelRatio),
-    1 / (window.innerHeight * activePixelRatio)
+    1 / (initialViewport.width * activePixelRatio),
+    1 / (initialViewport.height * activePixelRatio)
 );
 composer.addPass(fxaaPass);
 
@@ -102,6 +155,7 @@ let lastTime = 0;
 let perfAcc = 0;
 let perfFrames = 0;
 let degradedQuality = false;
+let landscapeBlocked = false;
 
 function updatePostProcessSize(width, height) {
     renderer.setSize(width, height);
@@ -113,8 +167,40 @@ function updatePostProcessSize(width, height) {
     );
 }
 
+function applyOrientationLockState() {
+    const blocked = shouldForceLandscapeMode() && !isLandscapeViewport();
+    landscapeBlocked = blocked;
+    document.body.classList.toggle('landscape-locked', blocked);
+    if (orientationLockEl) {
+        orientationLockEl.classList.toggle('hidden', !blocked);
+    }
+    if (orientationHintEl) {
+        orientationHintEl.classList.toggle('hidden', !isIOSDevice());
+    }
+}
+
+function resizeViewport() {
+    applyOrientationLockState();
+    const { width, height } = getViewportSize();
+    const a = width / height;
+
+    camera.left = frustumSize * a / -2;
+    camera.right = frustumSize * a / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = frustumSize / -2;
+    camera.updateProjectionMatrix();
+
+    updatePostProcessSize(width, height);
+}
+
 function animate(time) {
     requestAnimationFrame(animate);
+
+    if (landscapeBlocked) {
+        lastTime = time;
+        composer.render();
+        return;
+    }
 
     const dt = Math.min((time - lastTime) / 1000, 0.1); // Cap dt to prevent huge jumps
     lastTime = time;
@@ -142,18 +228,28 @@ function animate(time) {
 }
 
 requestAnimationFrame(animate);
+applyOrientationLockState();
+
+const immersiveTriggers = [
+    document.getElementById('start-btn'),
+    document.getElementById('restart-btn'),
+    document.getElementById('next-level-btn'),
+    document.getElementById('victory-restart-btn')
+].filter(Boolean);
+
+immersiveTriggers.forEach((el) => {
+    el.addEventListener('click', () => {
+        requestImmersiveMode();
+    });
+});
 
 // Resize handler
-window.addEventListener('resize', () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const a = w / h;
-
-    camera.left = frustumSize * a / -2;
-    camera.right = frustumSize * a / 2;
-    camera.top = frustumSize / 2;
-    camera.bottom = frustumSize / -2;
-    camera.updateProjectionMatrix();
-
-    updatePostProcessSize(w, h);
+window.addEventListener('resize', resizeViewport);
+window.addEventListener('orientationchange', () => {
+    setTimeout(resizeViewport, 80);
 });
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeViewport);
+}
+
+resizeViewport();

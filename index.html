@@ -3,7 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#072640">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Flyttsmart 3D 🚚</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚚</text></svg>">
@@ -38,6 +42,14 @@
 
 <body>
     <div id="game-container"></div>
+    <div id="orientation-lock" class="hidden">
+        <div class="orientation-lock-card">
+            <h2>↔️ Liggande Läge Krävs</h2>
+            <p>Spelet fungerar bara i liggande läge på mobil och iOS.</p>
+            <button id="immersive-btn" type="button">Försök Helskärm</button>
+            <p class="orientation-hint">Tips för iPhone: lägg sidan på hemskärmen för fullskärm utan Safari-fält.</p>
+        </div>
+    </div>
 
     <!-- HUD -->
     <div id="hud" class="hidden">
