@@ -22,8 +22,8 @@ const lowPowerMode = lowMemoryDevice || lowCpuDevice;
 const quality = {
     lowPower: lowPowerMode,
     maxPixelRatio: lowPowerMode ? 1.5 : 2.0,
-    shadowMapSize: lowPowerMode ? 1024 : 1536,
-    particleCount: lowPowerMode ? 84 : 120,
+    shadowMapSize: lowPowerMode ? 768 : 1024,
+    particleCount: lowPowerMode ? 64 : 96,
 };
 
 const orientationLockEl = document.getElementById('orientation-lock');
@@ -89,7 +89,7 @@ let activePixelRatio = Math.min(window.devicePixelRatio, quality.maxPixelRatio);
 renderer.setPixelRatio(activePixelRatio);
 renderer.setSize(initialViewport.width, initialViewport.height);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = quality.lowPower ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = postfx.toneMappingExposure;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -122,10 +122,6 @@ camera.updateProjectionMatrix();
 
 // Game
 const game = new Game(scene, camera, quality);
-if (typeof window !== 'undefined') {
-    window.__game = game;
-    window.__scene = scene;
-}
 
 // Post-processing for a richer arcade look
 const composer = new EffectComposer(renderer);
@@ -154,8 +150,15 @@ composer.addPass(fxaaPass);
 let lastTime = 0;
 let perfAcc = 0;
 let perfFrames = 0;
-let degradedQuality = false;
+let adaptiveDegradeCount = 0;
 let landscapeBlocked = false;
+let manualControlActive = false;
+let shadowRefreshFrames = 2;
+
+function requestShadowRefresh(frames = 2) {
+    shadowRefreshFrames = Math.max(shadowRefreshFrames, frames);
+    renderer.shadowMap.needsUpdate = shadowRefreshFrames > 0;
+}
 
 function updatePostProcessSize(width, height) {
     renderer.setSize(width, height);
@@ -193,6 +196,51 @@ function resizeViewport() {
     updatePostProcessSize(width, height);
 }
 
+function applyAdaptiveQuality(dt) {
+    perfAcc += dt;
+    perfFrames += 1;
+    if (perfAcc < postfx.adaptive.sampleWindowSec) return;
+
+    const fps = perfFrames / perfAcc;
+    if (fps < postfx.adaptive.fpsThreshold && adaptiveDegradeCount < 6) {
+        adaptiveDegradeCount += 1;
+        if (activePixelRatio > 1.01) {
+            activePixelRatio = Math.max(1, activePixelRatio - postfx.adaptive.pixelRatioStep);
+            renderer.setPixelRatio(activePixelRatio);
+            updatePostProcessSize(window.innerWidth, window.innerHeight);
+        } else if (bloomPass && bloomPass.enabled !== false) {
+            bloomPass.strength *= postfx.adaptive.bloomDegradeScale;
+            if (bloomPass.strength < 0.08) {
+                bloomPass.enabled = false;
+            }
+        } else if (renderer.shadowMap.enabled) {
+            renderer.shadowMap.enabled = false;
+        }
+    }
+
+    perfAcc = 0;
+    perfFrames = 0;
+}
+
+function runFrame(dt, trackPerformance = false) {
+    if (game.consumeShadowRefreshRequest?.()) {
+        requestShadowRefresh(2);
+    }
+
+    renderer.shadowMap.autoUpdate = shadowRefreshFrames > 0;
+    game.update(dt);
+    composer.render();
+
+    if (shadowRefreshFrames > 0) {
+        shadowRefreshFrames -= 1;
+        renderer.shadowMap.needsUpdate = shadowRefreshFrames > 0;
+    }
+
+    if (trackPerformance) {
+        applyAdaptiveQuality(dt);
+    }
+}
+
 function animate(time) {
     requestAnimationFrame(animate);
 
@@ -202,33 +250,38 @@ function animate(time) {
         return;
     }
 
+    if (manualControlActive) {
+        lastTime = time;
+        return;
+    }
+
     const dt = Math.min((time - lastTime) / 1000, 0.1); // Cap dt to prevent huge jumps
     lastTime = time;
-
-    game.update(dt);
-    composer.render();
-
-    // One-step adaptive fallback for sustained heavy load
-    if (!degradedQuality) {
-        perfAcc += dt;
-        perfFrames += 1;
-        if (perfAcc >= postfx.adaptive.sampleWindowSec) {
-            const fps = perfFrames / perfAcc;
-            if (fps < postfx.adaptive.fpsThreshold) {
-                degradedQuality = true;
-                activePixelRatio = Math.max(1, activePixelRatio - postfx.adaptive.pixelRatioStep);
-                renderer.setPixelRatio(activePixelRatio);
-                if (bloomPass) bloomPass.strength *= postfx.adaptive.bloomDegradeScale;
-                updatePostProcessSize(window.innerWidth, window.innerHeight);
-            }
-            perfAcc = 0;
-            perfFrames = 0;
-        }
-    }
+    runFrame(dt, true);
 }
 
 requestAnimationFrame(animate);
 applyOrientationLockState();
+requestShadowRefresh(3);
+
+if (typeof window !== 'undefined') {
+    window.__game = game;
+    window.__scene = scene;
+    window.__requestShadowRefresh = requestShadowRefresh;
+    window.render_game_to_text = () => game.renderGameToText();
+    window.advanceTime = async (ms = 1000 / 60) => {
+        manualControlActive = true;
+        const frameMs = 1000 / 60;
+        const steps = Math.max(1, Math.round(ms / frameMs));
+        for (let i = 0; i < steps; i++) {
+            runFrame(1 / 60, false);
+        }
+    };
+    window.resumeRealtime = () => {
+        manualControlActive = false;
+        lastTime = performance.now();
+    };
+}
 
 const immersiveTriggers = [
     document.getElementById('start-btn'),

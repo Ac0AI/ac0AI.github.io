@@ -34,6 +34,8 @@ const FURNITURE_TYPES = CURATED_FURNITURE_TYPES.length > 0
 const PLAYER_MOTION = PLAYER_MOTION_PRESETS[VISUAL_PROFILE] || PLAYER_MOTION_PRESETS.premium_arcade_v2;
 const FURNITURE_SPAWN_INTERVAL_SEC = 0.32;
 const GOLD_EMISSIVE_COLOR = new THREE.Color(0xFFD700);
+const PLAYER_RING_IDLE_COLOR = new THREE.Color(0x72dfff);
+const PLAYER_RING_CARRY_COLOR = new THREE.Color(0x8dffb7);
 
 export class Game {
     constructor(scene, camera, quality = {}) {
@@ -65,10 +67,11 @@ export class Game {
         // Player
         this.playerModel = null;
         this.playerPos = new THREE.Vector3(0, 0, 0);
-        this.playerSpeed = 11;
+        this.playerSpeed = 12.4;
         this.playerKeyLight = null;
         this.playerRimLight = null;
         this.playerShadowBlob = null;
+        this.playerFocusRing = null;
         this._playerAnimTime = 0;
         this._playerAnim = {
             state: 'idle',
@@ -95,6 +98,8 @@ export class Game {
         this._timeouts = new Set();
         this._assetsReady = false;
         this._setupPromise = null;
+        this._shadowRefreshRequested = true;
+        this._fastDeliveryWindowMs = 6500;
 
         // Setup
         this._setupPromise = this._setup();
@@ -113,6 +118,7 @@ export class Game {
         this.scene.add(this.playerModel);
         this._resetPlayerAnimationState();
         this._createPlayerPresentation();
+        this.requestShadowRefresh();
     }
 
     async _setup() {
@@ -197,6 +203,7 @@ export class Game {
 
         // Spawn initial furniture
         this._spawnFurniture(5);
+        this.world.setObjectiveTarget('truck');
 
         // Audio
         this.audio.resume();
@@ -231,6 +238,11 @@ export class Game {
             this.playerShadowBlob.material.dispose();
             this.playerShadowBlob = null;
         }
+        if (this.playerFocusRing) {
+            this.playerFocusRing.geometry.dispose();
+            this.playerFocusRing.material.dispose();
+            this.playerFocusRing = null;
+        }
 
         // Remove world objects
         // Simply clear the scene of everything except camera
@@ -261,6 +273,21 @@ export class Game {
         this.playerShadowBlob.rotation.x = -Math.PI / 2;
         this.playerShadowBlob.position.set(0, 0.03, 0);
         this.scene.add(this.playerShadowBlob);
+
+        const focusGeo = new THREE.RingGeometry(0.54, 0.72, 40);
+        const focusMat = new THREE.MeshBasicMaterial({
+            color: PLAYER_RING_IDLE_COLOR.clone(),
+            transparent: true,
+            opacity: 0.36,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
+        this.playerFocusRing = new THREE.Mesh(focusGeo, focusMat);
+        this.playerFocusRing.rotation.x = -Math.PI / 2;
+        this.playerFocusRing.position.set(0, 0.04, 0);
+        this.playerFocusRing.renderOrder = 130;
+        this.scene.add(this.playerFocusRing);
     }
 
     _resetPlayerAnimationState() {
@@ -312,6 +339,31 @@ export class Game {
         this._timeouts.forEach(id => clearTimeout(id));
         this._timeouts.clear();
         this.hasGracePeriod = false;
+    }
+
+    requestShadowRefresh() {
+        this._shadowRefreshRequested = true;
+    }
+
+    consumeShadowRefreshRequest() {
+        if (!this._shadowRefreshRequested) return false;
+        this._shadowRefreshRequested = false;
+        return true;
+    }
+
+    _nowMs() {
+        return typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now()
+            : Date.now();
+    }
+
+    _getObjectiveTarget() {
+        return this.carriedItem ? 'house' : 'truck';
+    }
+
+    _getSheepCap() {
+        const baseCap = this.quality.lowPower ? 4 : 6;
+        return Math.min(baseCap + (this.currentLevel >= this.maxLevel ? 1 : 0), 2 + this.currentLevel);
     }
 
     _spawnFurniture(count = 1) {
@@ -444,11 +496,15 @@ export class Game {
         if (this._sheepSpawnAcc >= 3) {
             this._sheepSpawnAcc = 0;
             if (this.state === 'PLAYING') {
-                this.enemies.spawnSheep(
-                    this.sheepSpawnCount,
-                    this.currentLevel,
-                    this.playerPos
-                );
+                const sheepCap = this._getSheepCap();
+                const openSlots = sheepCap - this.enemies.getSheepCount();
+                if (openSlots > 0) {
+                    this.enemies.spawnSheep(
+                        Math.min(this.sheepSpawnCount, openSlots),
+                        this.currentLevel,
+                        this.playerPos
+                    );
+                }
             }
         }
 
@@ -538,6 +594,7 @@ export class Game {
         this._animatePlayerMotion(dt);
 
         // ---- Ambient particles ----
+        this.world.setObjectiveTarget(this._getObjectiveTarget());
         this.world.updateParticles(dt);
 
         // ---- Gold item shimmer ----
@@ -593,6 +650,10 @@ export class Game {
         if (this.playerShadowBlob) {
             this.playerShadowBlob.position.x = this.playerPos.x;
             this.playerShadowBlob.position.z = this.playerPos.z;
+        }
+        if (this.playerFocusRing) {
+            this.playerFocusRing.position.x = this.playerPos.x;
+            this.playerFocusRing.position.z = this.playerPos.z;
         }
         if (this.playerKeyLight) {
             this.playerKeyLight.position.set(this.playerPos.x + 0.1, 2.15, this.playerPos.z + 0.85);
@@ -679,6 +740,15 @@ export class Game {
             const motionBlend = Math.max(this._playerAnim.walkBlend, this._playerAnim.carryBlend);
             this.playerShadowBlob.material.opacity = 0.18 + motionBlend * 0.06 + dropSettle * 0.04;
         }
+        if (this.playerFocusRing?.material?.color) {
+            const motionBlend = Math.max(this._playerAnim.walkBlend, this._playerAnim.carryBlend);
+            const targetColor = this.carriedItem ? PLAYER_RING_CARRY_COLOR : PLAYER_RING_IDLE_COLOR;
+            this.playerFocusRing.material.color.lerp(targetColor, Math.min(1, dt * 8));
+            this.playerFocusRing.material.opacity = 0.24 + motionBlend * 0.08 + (this.carriedItem ? 0.08 : 0);
+            const baseScale = this.carriedItem ? 1.14 : 1;
+            const pulseScale = baseScale + Math.sin(this._playerAnimTime * (this.carriedItem ? 6.4 : 4.8)) * (this.carriedItem ? 0.05 : 0.03);
+            this.playerFocusRing.scale.set(pulseScale, pulseScale, pulseScale);
+        }
     }
 
     _handleInteraction() {
@@ -714,6 +784,21 @@ export class Game {
                 const type = comboMult >= 4 ? 'mega' : comboMult >= 2 ? 'combo' : this.carriedItem.isGold ? 'gold' : '';
                 // Project to screen for floating text
                 const screenPos = this._worldToScreen(this.playerPos);
+
+                if (this.currentLevel < this.maxLevel) {
+                    const pickupAgeMs = typeof this.carriedItem.pickedUpAtMs === 'number'
+                        ? this._nowMs() - this.carriedItem.pickedUpAtMs
+                        : Infinity;
+                    if (this.carriedItem.pickedFromTruck && pickupAgeMs <= this._fastDeliveryWindowMs) {
+                        const timeBonusSec = this.carriedItem.isGold ? 3 : 2;
+                        this.timeLeft = Math.min(this.timeLeft + timeBonusSec, 99);
+                        pointLabel += ` ⚡+${timeBonusSec}s`;
+                        this.ui.showFloatingPoints(screenPos.x + 58, screenPos.y - 92, `⚡ +${timeBonusSec}s`, 'gold');
+                        this.ui.showAnnouncement(`⚡ SNABBLEVERANS +${timeBonusSec}S`);
+                        this.audio.playSynth('event');
+                    }
+                }
+
                 this.ui.showFloatingPoints(screenPos.x, screenPos.y - 50, pointLabel, type);
 
                 // Remove item
@@ -740,6 +825,8 @@ export class Game {
                 this.audio.playSynth('drop');
                 this.carriedItem.model.position.y = 0;
                 const droppedItem = this.carriedItem;
+                droppedItem.pickedUpAtMs = null;
+                droppedItem.pickedFromTruck = false;
                 this.effects.spawnInteractionBurst(this.scene, droppedItem.model.position, 'drop');
                 this.carriedItem = null;
                 this._pulsePlayerAction('drop');
@@ -759,7 +846,7 @@ export class Game {
         } else {
             // ---- PICK UP ----
             let closest = null;
-            let minDist = 3;
+            let minDist = this.world.isInTruckZone(this.playerPos) ? 3.8 : 3.3;
 
             this.furnitureItems.forEach(item => {
                 const dist = Math.sqrt(
@@ -773,12 +860,78 @@ export class Game {
             });
 
             if (closest) {
+                closest.pickedUpAtMs = this._nowMs();
+                closest.pickedFromTruck = this.world.isInTruckZone(closest.model.position);
                 this.carriedItem = closest;
                 this.audio.playSynth('pickup');
                 this.effects.spawnInteractionBurst(this.scene, closest.model.position, 'pickup');
                 this._pulsePlayerAction('pickup');
             }
         }
+    }
+
+    renderGameToText() {
+        const round = (value) => Math.round(value * 10) / 10;
+        const objective = this._getObjectiveTarget() === 'house'
+            ? 'deliver_to_house'
+            : 'pick_up_from_truck';
+        const furnitureNearby = this.furnitureItems
+            .filter(item => item && item !== this.carriedItem && item.model)
+            .sort((a, b) => this.playerPos.distanceToSquared(a.model.position) - this.playerPos.distanceToSquared(b.model.position))
+            .slice(0, 5)
+            .map((item) => ({
+                type: item.type,
+                gold: !!item.isGold,
+                x: round(item.model.position.x),
+                z: round(item.model.position.z)
+            }));
+        const sheepNearby = this.enemies.sheep
+            .slice()
+            .sort((a, b) => this.playerPos.distanceToSquared(a.model.position) - this.playerPos.distanceToSquared(b.model.position))
+            .slice(0, 6)
+            .map((sheep) => ({
+                boss: !!sheep.isBoss,
+                x: round(sheep.model.position.x),
+                z: round(sheep.model.position.z)
+            }));
+        const powerups = this.powerups.powerups
+            .slice(0, 4)
+            .map((powerup) => ({
+                type: powerup.type,
+                x: round(powerup.model.position.x),
+                z: round(powerup.model.position.z)
+            }));
+
+        return JSON.stringify({
+            mode: this.state,
+            coordinateSystem: 'x right, z down-right from the camera, y up',
+            objective,
+            score: this.score,
+            level: this.currentLevel,
+            timeLeft: this.currentLevel >= this.maxLevel ? 'endless' : round(this.timeLeft),
+            player: {
+                x: round(this.playerPos.x),
+                z: round(this.playerPos.z),
+                carrying: this.carriedItem ? this.carriedItem.type : null
+            },
+            zones: {
+                truck: { x: this.world.truckPos.x, z: this.world.truckPos.z, radius: this.world.truckZoneRadius },
+                house: { x: this.world.housePos.x, z: this.world.housePos.z, radius: this.world.houseZoneRadius }
+            },
+            sheepCount: this.enemies.getSheepCount(),
+            combo: {
+                count: this.powerups.comboCount,
+                multiplier: this.powerups.comboMultiplier
+            },
+            activeEffects: {
+                speedMultiplier: this.powerups.speedMultiplier,
+                shield: this.powerups.hasShield,
+                invertedControls: this.powerups.invertedControls
+            },
+            furnitureNearby,
+            sheepNearby,
+            powerups
+        });
     }
 
     _worldToScreen(worldPos) {
@@ -868,6 +1021,8 @@ export class Game {
 
         // Switch environment
         this.world.switchLevel(this.currentLevel);
+        this.world.setObjectiveTarget('truck');
+        this.requestShadowRefresh();
 
         // UI
         this.ui.hideLevelComplete();

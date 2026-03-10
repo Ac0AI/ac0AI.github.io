@@ -313,7 +313,7 @@ function _polishExternalPlayerMaterials(root) {
     });
 }
 
-function _polishExternalAnimalMaterials(root, kind = 'sheep') {
+function _polishExternalAnimalMaterials(root, kind = 'sheep', variant = null) {
     const palette = kind === 'dog'
         ? {
             main: new THREE.Color(0xb99165),
@@ -327,6 +327,12 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
             light: new THREE.Color(0xffffff),
             emissive: new THREE.Color(0x1a1a1a)
         };
+    const woolTint = kind === 'sheep' && variant?.woolTint
+        ? new THREE.Color(variant.woolTint)
+        : null;
+    const glowTint = kind === 'sheep' && variant?.glowTint
+        ? new THREE.Color(variant.glowTint)
+        : null;
     const furSurface = getSurfaceMaterialProps(texturePack, 'fabric');
 
     root.traverse((node) => {
@@ -358,6 +364,9 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
                         THREE.MathUtils.clamp(hsl.s * 0.28 + 0.03, 0.02, 0.16),
                         THREE.MathUtils.clamp(Math.max(hsl.l, 0.84), 0.84, 0.96)
                     );
+                    if (woolTint) {
+                        next.color.lerp(woolTint, 0.34);
+                    }
                 }
             }
             if (typeof next.roughness === 'number') {
@@ -373,8 +382,8 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
             if ('emissive' in next) {
                 next.emissive = next.emissive || new THREE.Color(0x000000);
                 if (kind === 'sheep') {
-                    next.emissive.lerp(new THREE.Color(0xffffff), 0.06);
-                    next.emissiveIntensity = Math.max(0.07, next.emissiveIntensity || 0.07);
+                    next.emissive.lerp(glowTint || new THREE.Color(0xffffff), glowTint ? 0.14 : 0.06);
+                    next.emissiveIntensity = Math.max(glowTint ? 0.11 : 0.07, next.emissiveIntensity || 0.07);
                 } else {
                     next.emissive.lerp(palette.emissive, 0.08);
                     next.emissiveIntensity = Math.max(0.04, next.emissiveIntensity || 0.04);
@@ -387,14 +396,117 @@ function _polishExternalAnimalMaterials(root, kind = 'sheep') {
     });
 }
 
+const SHEEP_THEME_STYLES = {
+    1: {
+        woolTint: 0xfefbf1,
+        glowTint: 0xffffff,
+        eyeIris: 0x63e0bd,
+        eyeIrisGlow: 0x1f705f,
+        nose: 0xffb4c7,
+        nostril: 0xdf788f,
+        blush: 0xff7eb3,
+        smile: 0xb05070,
+        mouth: 0x6b2d3e,
+        bow: 0xff72b0,
+        fluff: 0xfef9f0,
+        scarf: 0x8fe8b4,
+        scarfTag: 0xffe5a8,
+        star: 0xffe066,
+        starEmissive: 0x604010,
+        hatPalette: [0x00c6ff, 0xff7fc0, 0x6ee7b7, 0xffd6a5, 0xb5a8ff],
+        hatChance: 0.84,
+    },
+    2: {
+        woolTint: 0xf5e0c3,
+        glowTint: 0xffd7a6,
+        eyeIris: 0xbde36f,
+        eyeIrisGlow: 0x4e6e1f,
+        nose: 0xf2ab7e,
+        nostril: 0xc56f48,
+        blush: 0xffb28e,
+        smile: 0x9d4e2b,
+        mouth: 0x5f2d17,
+        bow: 0xe97f35,
+        fluff: 0xf7ead6,
+        scarf: 0xd95d39,
+        scarfTag: 0xffd17a,
+        star: 0xffb347,
+        starEmissive: 0x6d3408,
+        hatPalette: [0xff9f43, 0xf7b267, 0xc96f2d, 0xa15c38, 0xe76f51],
+        hatChance: 0.78,
+    },
+    3: {
+        woolTint: 0xfcfdff,
+        glowTint: 0xb8e2ff,
+        eyeIris: 0x88d8ff,
+        eyeIrisGlow: 0x3e7ab0,
+        nose: 0xf0bfd6,
+        nostril: 0xc484a1,
+        blush: 0xd8f0ff,
+        smile: 0x7b97c7,
+        mouth: 0x5474a4,
+        bow: 0x8bc8ff,
+        fluff: 0xffffff,
+        scarf: 0xd4ecff,
+        scarfTag: 0x9bd5ff,
+        star: 0xdff7ff,
+        starEmissive: 0x4b90c8,
+        hatPalette: [0xb8deff, 0xe4f3ff, 0x9dc2ff, 0x81dbff],
+        hatChance: 0.74,
+    },
+    4: {
+        woolTint: 0xe1d7ff,
+        glowTint: 0x7bd7ff,
+        eyeIris: 0x7ef3ff,
+        eyeIrisGlow: 0x1a5e76,
+        nose: 0xd9b5ff,
+        nostril: 0x9d76d1,
+        blush: 0xc68fff,
+        smile: 0x6f54c6,
+        mouth: 0x3b275f,
+        bow: 0x7f9bff,
+        fluff: 0xefe7ff,
+        scarf: 0x6dffd8,
+        scarfTag: 0xa8fff1,
+        star: 0x8df3ff,
+        starEmissive: 0x195d73,
+        hatPalette: [0x7f9bff, 0x9f8cff, 0x72e7ff, 0x6dffd8, 0xb8a6ff],
+        hatChance: 0.88,
+    },
+    5: {
+        woolTint: 0xf0c4a2,
+        glowTint: 0xff9e63,
+        eyeIris: 0xffc178,
+        eyeIrisGlow: 0x7c3d16,
+        nose: 0xff9f7e,
+        nostril: 0xd66249,
+        blush: 0xff9d78,
+        smile: 0xb95635,
+        mouth: 0x6b2919,
+        bow: 0xff7a45,
+        fluff: 0xf5d4b4,
+        scarf: 0xffc15a,
+        scarfTag: 0xfff0c2,
+        star: 0xff934f,
+        starEmissive: 0x7a2500,
+        hatPalette: [0xff7a45, 0xffa552, 0xffd166, 0xd8572a, 0xffbc80],
+        hatChance: 0.9,
+    }
+};
+
+function _getSheepThemeStyle(variant = {}) {
+    const level = Math.max(1, Math.min(5, Math.round(variant?.level || 1)));
+    return SHEEP_THEME_STYLES[level] || SHEEP_THEME_STYLES[1];
+}
+
 function _markSheepAccessory(mesh) {
     mesh.castShadow = false;
     mesh.receiveShadow = true;
-    mesh.userData = { ...mesh.userData, noBossTint: true };
+    mesh.userData = { ...mesh.userData, noBossTint: true, sheepAccessory: true };
     return mesh;
 }
 
-function _addSheepStylePass(root) {
+function _addSheepStylePass(root, variant = {}) {
     if (!root) return;
     root.updateWorldMatrix(true, true);
     _tmpBox.setFromObject(root);
@@ -409,33 +521,55 @@ function _addSheepStylePass(root) {
     const width = Math.max(0.22, _tmpSize.x);
     const height = Math.max(0.22, _tmpSize.y);
     const depth = Math.max(0.22, _tmpSize.z);
-    const unit = Math.max(0.045, Math.min(width, height, depth) * 0.16);
-    const eyeX = width * 0.18;
-    const faceY = height * 0.64;
-    const faceZ = depth * 0.35;
+    // Bigger unit scale = bigger eyes, nose, etc.
+    const unit = Math.max(0.055, Math.min(width, height, depth) * 0.22);
+    const eyeX = width * 0.20;
+    const faceY = height * 0.66;
+    const faceZ = depth * 0.38;
 
     const deco = new THREE.Group();
     deco.name = 'sheep-style-pass';
+    const theme = _getSheepThemeStyle(variant);
 
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.48, metalness: 0.0 });
-    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.36, metalness: 0.08 });
-    const blushMat = new THREE.MeshStandardMaterial({ color: 0xff93b7, roughness: 0.7, metalness: 0.0 });
-    const smileMat = new THREE.MeshStandardMaterial({ color: 0x6f3b31, roughness: 0.62, metalness: 0.02 });
-    const bowMat = new THREE.MeshStandardMaterial({ color: 0xff6767, roughness: 0.56, metalness: 0.08 });
+    // --- Big cute anime-style eyes ---
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xfff8f0, roughness: 0.3, metalness: 0.0 });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2e, roughness: 0.2, metalness: 0.12 });
+    // Bright iris ring (teal/blue cute)
+    const irisMat = new THREE.MeshStandardMaterial({
+        color: theme.eyeIris, roughness: 0.28, metalness: 0.0,
+        emissive: new THREE.Color(theme.eyeIrisGlow), emissiveIntensity: 0.25
+    });
+    // White sparkle highlight
+    const sparkMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff, roughness: 0.1, metalness: 0.0,
+        emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.55
+    });
 
-    const eyeGeo = new THREE.SphereGeometry(unit, 12, 10);
-    const pupilGeo = new THREE.SphereGeometry(unit * 0.45, 10, 8);
-    const blushGeo = new THREE.SphereGeometry(unit * 0.62, 10, 8);
-
+    // Big eye whites (1.45× the old size)
+    const eyeGeo = new THREE.SphereGeometry(unit * 1.45, 14, 12);
     const eyeL = _markSheepAccessory(new THREE.Mesh(eyeGeo, eyeMat));
     eyeL.position.set(-eyeX, faceY, faceZ);
+    eyeL.scale.set(1.0, 1.18, 0.82); // slightly oval
     deco.add(eyeL);
     const eyeR = eyeL.clone();
     eyeR.position.x = eyeX;
     deco.add(eyeR);
 
+    // Iris ring
+    const irisGeo = new THREE.SphereGeometry(unit * 1.0, 12, 10);
+    const irisL = _markSheepAccessory(new THREE.Mesh(irisGeo, irisMat));
+    irisL.position.set(-eyeX, faceY - unit * 0.04, faceZ + unit * 0.78);
+    irisL.scale.set(1.0, 1.18, 0.7);
+    deco.add(irisL);
+    const irisR = irisL.clone();
+    irisR.position.x = eyeX;
+    deco.add(irisR);
+
+    // Dark pupil
+    const pupilGeo = new THREE.SphereGeometry(unit * 0.58, 10, 8);
     const pupilL = _markSheepAccessory(new THREE.Mesh(pupilGeo, pupilMat));
-    pupilL.position.set(-eyeX, faceY - unit * 0.06, faceZ + unit * 0.72);
+    pupilL.position.set(-eyeX, faceY - unit * 0.05, faceZ + unit * 1.0);
+    pupilL.scale.set(1.0, 1.1, 0.65);
     pupilL.userData.baseX = pupilL.position.x;
     pupilL.userData.baseY = pupilL.position.y;
     deco.add(pupilL);
@@ -445,110 +579,206 @@ function _addSheepStylePass(root) {
     pupilR.userData.baseY = pupilR.position.y;
     deco.add(pupilR);
 
+    // Sparkle highlight — top-right of each eye
+    const sparkGeo = new THREE.SphereGeometry(unit * 0.28, 8, 6);
+    const sparkL = _markSheepAccessory(new THREE.Mesh(sparkGeo, sparkMat));
+    sparkL.position.set(-eyeX + unit * 0.46, faceY + unit * 0.48, faceZ + unit * 1.1);
+    deco.add(sparkL);
+    const sparkR = sparkL.clone();
+    sparkR.position.x = eyeX + unit * 0.46;
+    deco.add(sparkR);
+    // Tiny second sparkle
+    const spark2Geo = new THREE.SphereGeometry(unit * 0.14, 6, 5);
+    const spark2L = _markSheepAccessory(new THREE.Mesh(spark2Geo, sparkMat));
+    spark2L.position.set(-eyeX - unit * 0.26, faceY + unit * 0.64, faceZ + unit * 1.1);
+    deco.add(spark2L);
+    const spark2R = spark2L.clone();
+    spark2R.position.x = eyeX - unit * 0.26;
+    deco.add(spark2R);
+
+    // --- Cute round pink nose ---
+    const noseMat = new THREE.MeshStandardMaterial({ color: theme.nose, roughness: 0.65, metalness: 0.0 });
+    const nose = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.58, 10, 8), noseMat));
+    nose.scale.set(1.4, 0.88, 0.75);
+    nose.position.set(0, faceY - unit * 1.0, faceZ + unit * 0.72);
+    deco.add(nose);
+    // Tiny nostrils
+    const nostrilMat = new THREE.MeshStandardMaterial({ color: theme.nostril, roughness: 0.7, metalness: 0.0 });
+    const nostrilGeo = new THREE.SphereGeometry(unit * 0.17, 7, 6);
+    const nostrilL = _markSheepAccessory(new THREE.Mesh(nostrilGeo, nostrilMat));
+    nostrilL.position.set(-unit * 0.28, faceY - unit * 1.04, faceZ + unit * 1.08);
+    deco.add(nostrilL);
+    const nostrilR = nostrilL.clone();
+    nostrilR.position.x = unit * 0.28;
+    deco.add(nostrilR);
+
+    // --- Big rosy blush cheeks ---
+    const blushMat = new THREE.MeshStandardMaterial({
+        color: theme.blush, roughness: 0.82, metalness: 0.0,
+        transparent: true, opacity: 0.72
+    });
+    const blushGeo = new THREE.SphereGeometry(unit * 0.92, 10, 8);
     const blushL = _markSheepAccessory(new THREE.Mesh(blushGeo, blushMat));
-    blushL.scale.set(1.22, 0.72, 0.55);
-    blushL.position.set(-eyeX * 1.32, faceY - unit * 0.56, faceZ + unit * 0.32);
+    blushL.scale.set(1.55, 0.7, 0.42);
+    blushL.position.set(-eyeX * 1.5, faceY - unit * 0.62, faceZ + unit * 0.45);
     deco.add(blushL);
     const blushR = blushL.clone();
-    blushR.position.x = eyeX * 1.32;
+    blushR.position.x = eyeX * 1.5;
     deco.add(blushR);
 
+    // --- Happy smile ---
+    const smileMat = new THREE.MeshStandardMaterial({ color: theme.smile, roughness: 0.62, metalness: 0.02 });
     const smile = _markSheepAccessory(
-        new THREE.Mesh(new THREE.TorusGeometry(unit * 0.78, unit * 0.18, 8, 20, Math.PI), smileMat)
+        new THREE.Mesh(new THREE.TorusGeometry(unit * 0.72, unit * 0.16, 8, 20, Math.PI), smileMat)
     );
-    smile.position.set(0, faceY - unit * 1.08, faceZ + unit * 0.56);
+    smile.position.set(0, faceY - unit * 1.42, faceZ + unit * 0.72);
     smile.rotation.z = Math.PI;
     deco.add(smile);
 
-    const bowKnot = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.34, 10, 8), bowMat));
-    bowKnot.position.set(0, height * 0.4, depth * 0.28);
+    // Inner mouth hint (tiny dark oval)
+    const mouthMat = new THREE.MeshStandardMaterial({ color: theme.mouth, roughness: 0.7, metalness: 0.0 });
+    const mouthGeo = new THREE.SphereGeometry(unit * 0.26, 8, 6);
+    const mouth = _markSheepAccessory(new THREE.Mesh(mouthGeo, mouthMat));
+    mouth.scale.set(1.8, 0.7, 0.5);
+    mouth.position.set(0, faceY - unit * 1.44, faceZ + unit * 0.82);
+    deco.add(mouth);
+
+    // --- Pretty bow / ribbon ---
+    const bowMat = new THREE.MeshStandardMaterial({ color: theme.bow, roughness: 0.52, metalness: 0.08 });
+    const bowKnot = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.38, 10, 8), bowMat));
+    bowKnot.position.set(0, height * 0.94, depth * 0.3);
     deco.add(bowKnot);
-    const bowWingL = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.56, 10, 8), bowMat));
-    bowWingL.scale.set(1.28, 0.6, 0.55);
-    bowWingL.position.set(-unit * 0.88, height * 0.4, depth * 0.28);
+    const bowWingL = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.64, 10, 8), bowMat));
+    bowWingL.scale.set(1.48, 0.68, 0.52);
+    bowWingL.position.set(-unit * 1.0, height * 0.94, depth * 0.3);
     deco.add(bowWingL);
     const bowWingR = bowWingL.clone();
-    bowWingR.position.x = unit * 0.88;
+    bowWingR.position.x = unit * 1.0;
     deco.add(bowWingR);
 
+    // --- Super fluffy wool — two rings of big puffs + extra cap puffs ---
     const fluffMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
+        color: theme.fluff,
         ...getSurfaceMaterialProps(texturePack, 'fabric'),
-        roughness: 0.94,
-        metalness: 0.0
+        roughness: 0.96,
+        metalness: 0.0,
+        emissive: new THREE.Color(theme.glowTint).multiplyScalar(0.05),
+        emissiveIntensity: 0.18
     });
-    const fluffCount = 12;
-    for (let i = 0; i < fluffCount; i++) {
-        const t = i / fluffCount;
+
+    // Lower ring of puffs
+    const fluffCountLow = 14;
+    for (let i = 0; i < fluffCountLow; i++) {
+        const t = i / fluffCountLow;
         const angle = t * Math.PI * 2;
-        const radius = (0.34 + Math.sin(t * Math.PI * 3) * 0.08) * width;
-        const puff = _markSheepAccessory(
-            new THREE.Mesh(
-                new THREE.SphereGeometry(unit * (0.62 + Math.random() * 0.34), 10, 8),
-                fluffMat
-            )
-        );
+        const radius = (0.40 + Math.sin(t * Math.PI * 4) * 0.06) * width;
+        const puffSize = unit * (0.85 + Math.random() * 0.52);
+        const puff = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(puffSize, 11, 9), fluffMat));
         puff.position.set(
             Math.cos(angle) * radius,
-            height * (0.5 + (Math.random() - 0.5) * 0.12),
-            Math.sin(angle) * (depth * 0.3)
+            height * (0.32 + Math.random() * 0.14),
+            Math.sin(angle) * (depth * 0.38)
         );
-        puff.scale.set(1.2, 0.92, 1.1);
+        puff.scale.set(1.28, 1.05, 1.18);
         deco.add(puff);
     }
-    const topFluff = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.9, 11, 9), fluffMat));
-    topFluff.scale.set(2.05, 0.9, 1.55);
-    topFluff.position.set(0, height * 0.72, 0);
+
+    // Upper ring of puffs — slightly smaller, higher up
+    const fluffCountHigh = 12;
+    for (let i = 0; i < fluffCountHigh; i++) {
+        const t = i / fluffCountHigh;
+        const angle = t * Math.PI * 2 + Math.PI / fluffCountHigh; // offset so they interleave
+        const radius = (0.32 + Math.sin(t * Math.PI * 3) * 0.06) * width;
+        const puffSize = unit * (0.72 + Math.random() * 0.44);
+        const puff = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(puffSize, 11, 9), fluffMat));
+        puff.position.set(
+            Math.cos(angle) * radius,
+            height * (0.52 + Math.random() * 0.14),
+            Math.sin(angle) * (depth * 0.32)
+        );
+        puff.scale.set(1.18, 1.02, 1.12);
+        deco.add(puff);
+    }
+
+    // Top fluffy head cap — bigger and rounder
+    const topFluff = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 1.1, 12, 10), fluffMat));
+    topFluff.scale.set(2.4, 1.1, 1.8);
+    topFluff.position.set(0, height * 0.74, 0);
     deco.add(topFluff);
 
-    const scarfMat = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.58, metalness: 0.06 });
-    const scarf = _markSheepAccessory(new THREE.Mesh(new THREE.TorusGeometry(width * 0.28, unit * 0.28, 10, 22), scarfMat));
-    scarf.position.set(0, height * 0.48, 0);
+    // Extra side puffs (ears-ish)
+    const earFluffL = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.82, 10, 8), fluffMat));
+    earFluffL.scale.set(0.9, 1.1, 0.9);
+    earFluffL.position.set(-width * 0.46, height * 0.68, 0);
+    deco.add(earFluffL);
+    const earFluffR = earFluffL.clone();
+    earFluffR.position.x = width * 0.46;
+    deco.add(earFluffR);
+
+    // --- Pastel scarf ---
+    const scarfMat = new THREE.MeshStandardMaterial({ color: theme.scarf, roughness: 0.54, metalness: 0.06 });
+    const scarf = _markSheepAccessory(new THREE.Mesh(new THREE.TorusGeometry(width * 0.3, unit * 0.32, 10, 24), scarfMat));
+    scarf.position.set(0, height * 0.28, 0);
     scarf.rotation.x = Math.PI / 2;
     scarf.userData.baseRotZ = 0;
     deco.add(scarf);
-    const scarfTag = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.28, 10, 8), new THREE.MeshStandardMaterial({
-        color: 0xffd166,
-        roughness: 0.44,
-        metalness: 0.18
+    const scarfTag = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.3, 10, 8), new THREE.MeshStandardMaterial({
+        color: theme.scarfTag,
+        roughness: 0.42,
+        metalness: 0.14
     })));
-    scarfTag.position.set(0, height * 0.44, depth * 0.34);
+    scarfTag.position.set(0, height * 0.24, depth * 0.36);
     deco.add(scarfTag);
 
-    const star = _markSheepAccessory(new THREE.Mesh(new THREE.OctahedronGeometry(unit * 0.65, 0), new THREE.MeshStandardMaterial({
-        color: 0xffd84d,
-        emissive: 0x503500,
-        emissiveIntensity: 0.42,
-        roughness: 0.4,
-        metalness: 0.12
+    // --- Floating star ---
+    const star = _markSheepAccessory(new THREE.Mesh(new THREE.OctahedronGeometry(unit * 0.7, 0), new THREE.MeshStandardMaterial({
+        color: theme.star,
+        emissive: theme.starEmissive,
+        emissiveIntensity: 0.5,
+        roughness: 0.36,
+        metalness: 0.16
     })));
-    star.position.set(0, height * 1.12, 0);
+    star.position.set(0, height * 1.18, 0);
     star.userData.baseY = star.position.y;
     deco.add(star);
 
+    // --- Cute hat (more frequent, rounder party-hat proportions) ---
     let hatCone = null;
-    if (Math.random() < 0.74) {
-        const hatPalette = [0x00b4d8, 0xff7f50, 0x52b788, 0xff4d6d, 0x7b7fda];
+    if (Math.random() < theme.hatChance) {
+        const hatPalette = theme.hatPalette;
         const hatColor = hatPalette[Math.floor(Math.random() * hatPalette.length)];
-        const hatMat = new THREE.MeshStandardMaterial({
-            color: hatColor,
-            roughness: 0.5,
-            metalness: 0.1
-        });
-        hatCone = _markSheepAccessory(new THREE.Mesh(new THREE.ConeGeometry(unit * 0.9, unit * 2.8, 14), hatMat));
-        hatCone.position.set((Math.random() - 0.5) * width * 0.12, height * 0.95, -depth * 0.04);
-        hatCone.rotation.z = (Math.random() - 0.5) * 0.42;
+        const hatMat = new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.48, metalness: 0.1 });
+        // Wider, rounder cone for a cuter silhouette
+        hatCone = _markSheepAccessory(new THREE.Mesh(new THREE.ConeGeometry(unit * 1.1, unit * 2.6, 16), hatMat));
+        hatCone.position.set((Math.random() - 0.5) * width * 0.1, height * 0.96, -depth * 0.02);
+        hatCone.rotation.z = (Math.random() - 0.5) * 0.34;
         hatCone.userData.baseRotZ = hatCone.rotation.z;
         deco.add(hatCone);
 
-        const brim = _markSheepAccessory(new THREE.Mesh(new THREE.CylinderGeometry(unit * 1.06, unit * 1.14, unit * 0.2, 14), hatMat));
-        brim.position.set(hatCone.position.x, height * 0.81, -depth * 0.04);
+        const brim = _markSheepAccessory(new THREE.Mesh(new THREE.CylinderGeometry(unit * 1.28, unit * 1.38, unit * 0.22, 16), hatMat));
+        brim.position.set(hatCone.position.x, height * 0.80, -depth * 0.02);
         deco.add(brim);
 
-        const pomMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, roughness: 0.56, metalness: 0.0 });
-        const pom = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.35, 10, 8), pomMat));
-        pom.position.set(hatCone.position.x, height * 1.14, -depth * 0.04);
+        // heart-shaped pom on top (two spheres + tiny one)
+        const pomMat = new THREE.MeshStandardMaterial({
+            color: theme.scarfTag,
+            roughness: 0.5,
+            metalness: 0.0,
+            emissive: new THREE.Color(theme.glowTint).multiplyScalar(0.2),
+            emissiveIntensity: 0.25
+        });
+        const pom = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.42, 10, 8), pomMat));
+        pom.position.set(hatCone.position.x, height * 1.16, -depth * 0.02);
         deco.add(pom);
+
+        // Polka-dot on hat (contrasting color sphere)
+        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.0, transparent: true, opacity: 0.68 });
+        const dot1 = _markSheepAccessory(new THREE.Mesh(new THREE.SphereGeometry(unit * 0.2, 8, 6), dotMat));
+        dot1.position.set(hatCone.position.x + unit * 0.48, height * 0.87, (depth * 0.5) * 0.5 + unit * 0.32);
+        deco.add(dot1);
+        const dot2 = dot1.clone();
+        dot2.position.set(hatCone.position.x - unit * 0.36, height * 0.91, dot1.position.z);
+        deco.add(dot2);
     }
 
     root.add(deco);
@@ -720,7 +950,8 @@ function _createStylizedCourierPlayer() {
 
     group.traverse((node) => {
         if (!node.isMesh) return;
-        node.castShadow = true;
+        // The player already has a dedicated blob shadow, so dynamic shadow casting is wasted work.
+        node.castShadow = false;
         node.receiveShadow = true;
     });
 
@@ -1089,7 +1320,7 @@ export function createHouse() {
 // ============================================================
 // SHEEP — fluffy cloud sheep
 // ============================================================
-export function createSheep(scale = 1) {
+export function createSheep(scale = 1, variant = {}) {
     const opts = {
         targetHeight: 1.2 * scale,
         maxExtent: 1.8 * scale,
@@ -1100,9 +1331,10 @@ export function createSheep(scale = 1) {
     };
     const external = _tryCreateExternalAnimal('sheep', opts) || _tryCreateExternalRoleWithFallbacks('sheep', opts);
     if (!external) return null;
-    _polishExternalAnimalMaterials(external, 'sheep');
-    _addSheepStylePass(external);
+    _polishExternalAnimalMaterials(external, 'sheep', variant);
+    _addSheepStylePass(external, variant);
     external.userData.type = 'sheep';
+    external.userData.themeLevel = Math.max(1, Math.min(5, Math.round(variant?.level || 1)));
     return external;
 }
 

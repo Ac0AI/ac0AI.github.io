@@ -74,6 +74,44 @@ function createGrassTexture() {
     }, 22, 22);
 }
 
+function createThemedGroundTexture(baseColor, strokeColor, repeat = 22) {
+    return createTexture(256, (ctx, size) => {
+        noiseFill(ctx, size, baseColor, 600, 0.03, 0.1);
+        for (let i = 0; i < 420; i++) {
+            const x = rand(0, size);
+            const y = rand(0, size);
+            const len = rand(2, 6);
+            ctx.strokeStyle = `${strokeColor}${rand(0.06, 0.2).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + rand(-1.8, 1.8), y - len);
+            ctx.stroke();
+        }
+    }, repeat, repeat);
+}
+
+function createSnowTexture() {
+    return createTexture(256, (ctx, size) => {
+        noiseFill(ctx, size, '#eef6ff', 620, 0.02, 0.08);
+        for (let i = 0; i < 360; i++) {
+            const x = rand(0, size);
+            const y = rand(0, size);
+            const r = rand(1, 3.5);
+            ctx.fillStyle = `rgba(160, 205, 245, ${rand(0.05, 0.14).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        for (let i = 0; i < 180; i++) {
+            ctx.strokeStyle = `rgba(255,255,255,${rand(0.12, 0.28).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(rand(0, size), rand(0, size));
+            ctx.lineTo(rand(0, size), rand(0, size));
+            ctx.stroke();
+        }
+    }, 18, 18);
+}
+
 function createDirtTexture() {
     return createTexture(256, (ctx, size) => {
         noiseFill(ctx, size, '#9f7a49', 480, 0.03, 0.14);
@@ -186,6 +224,10 @@ export function createTexturePack() {
     cachedPack = {
         painted: createPaintedTexture(),
         grass: createGrassTexture(),
+        grassAutumn: createThemedGroundTexture('#c79a43', 'rgba(113, 64, 22, '),
+        snow: createSnowTexture(),
+        moonGrass: createThemedGroundTexture('#2c5a77', 'rgba(121, 213, 255, '),
+        ash: createThemedGroundTexture('#7a3720', 'rgba(255, 138, 79, '),
         dirt: createDirtTexture(),
         wood: createWoodTexture(),
         bark: createBarkTexture(),
@@ -202,6 +244,14 @@ export function getSurfaceMaterialProps(pack, surface = 'painted') {
     switch (surface) {
         case 'grass':
             return { map: p.grass, roughness: 0.93, metalness: 0.03 };
+        case 'grassAutumn':
+            return { map: p.grassAutumn, roughness: 0.93, metalness: 0.03 };
+        case 'snow':
+            return { map: p.snow, roughness: 0.97, metalness: 0.02 };
+        case 'moonGrass':
+            return { map: p.moonGrass, roughness: 0.94, metalness: 0.03 };
+        case 'ash':
+            return { map: p.ash, roughness: 0.94, metalness: 0.03 };
         case 'dirt':
             return { map: p.dirt, roughness: 0.9, metalness: 0.02 };
         case 'wood':

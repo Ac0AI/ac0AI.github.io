@@ -1,0 +1,76 @@
+Original prompt: gubben ser för taskig ut kan du göra en ny?
+
+- Read develop-web-game skill and confirmed local Playwright setup exists.
+- Replaced player model creation with a new handcrafted stylized courier character in src/models.js.
+- New player includes explicit animation rig nodes (armL/armR/legL/legR/head) compatible with existing game animation code.
+- Player model is normalized to ~1.95m height and grounded to y=0.
+- Next: run syntax check, run premium e2e, inspect screenshot to verify visual quality in gameplay.
+- Increased new player target world height from 1.95 to 2.35 for better on-screen readability in isometric camera.
+- Next: rerun e2e and visually confirm player clarity in screenshot.
+- Ran premium e2e suite (`npm run -s e2e:premium`) after player replacement and after size tune; both runs passed.
+- Captured dedicated showcase screenshot at `test-results/player-showcase.png` to visually confirm new character appears in gameplay.
+- Current state: player is custom stylized courier, larger than previous model, and animated via existing rig hooks.
+- Ground visual pass started: replaced random vertex tint with deterministic macro color waves in World._applyGroundVertexColors().
+- Made grass macro patches softer (higher segment circles, transparent blended, elliptical scale) to remove harsh polygon blotches.
+- Upgraded dirt path to layered blobs (base + highlight) with smoother segments.
+- Fixed level-switch regression where ground material map was nulled; now keeps grass texture and updates roughness/metalness correctly.
+- Ran premium e2e after ground pass (`npm run -s e2e:premium`): PASS.
+- Captured updated ground visual reference: `test-results/ground-pass.png`.
+- Ground now uses deterministic macro color bands and softer blended detail layers; no gameplay logic changes.
+- Added interaction burst VFX system in Effects (pickup/drop/deliver/impact variants) with transient cleanup support.
+- Hooked bursts into game events: pickup, ground drop, house delivery, and sheep roadkill impacts.
+- Added world FX upgrades: animated tuft sway, layered path fringe, richer zone indicators (dash + ripple), and soft contact shadows under truck/house.
+- Tuned burst scale/opacity upward for readability in isometric camera.
+- Re-ran `npm run -s e2e:premium` after full FX pass: PASS.
+- Captured targeted visuals: `test-results/fx-pass-pickup-v2.png`, `test-results/fx-pass-deliver-v2.png`, `test-results/fx-pass-world-v2.png`.
+- Animal consistency pass: narrowed curated sheep role to `['sheep']` only.
+- Tightened external catalog animal fallbacks to avoid generic animal-tag picks for dog/sheep roles.
+- Added animal material polish pass in models.js for sheep and dog to unify look (fur-like roughness, tuned tint, softer metalness).
+- Next: run e2e + force-animal screenshot validation to confirm no zebra/horse substitutions.
+- Sheep visual/fun pass: added universal style overlay in `createSheep()` with face details, blush, smile, bow tie, optional party hat, scarf ring + bell, and floating star accent (`src/models.js`).
+- Added sheep-specific material brightening in `_polishExternalAnimalMaterials()` so wool reads lighter and clearer in isometric view.
+- Added playful sheep motion profile in `EnemyManager`: per-sheep hop/bob timing, nod/roll/yaw wiggle, animated pupils, hat wiggle, scarf sway, and star bob/spin (`src/enemies.js`).
+- Boss tint now skips style/accessory meshes via `userData.noBossTint` so boss sheep still keep readable/fun overlays.
+- Attempted running `$WEB_GAME_CLIENT` from develop-web-game skill, but it failed to resolve `playwright` from the skill path in this workspace layout (`ERR_MODULE_NOT_FOUND`). Used project baseline fallback `npm run -s e2e:premium` for regression verification.
+- Regression run after sheep pass: `npm run -s e2e:premium` PASS (report date `2026-02-26T14:06:45.784Z`, invalidMeshCount=0, consoleErrors=[]).
+- Added targeted sheep showcase screenshot by forcing nearby sheep spawns: `test-results/sheep-style-showcase.png`.
+- TODO: if we want even stronger readability, increase accessory scale another ~10-15% or add a subtle emissive rim just on sheep accessories.
+- New environment art pass completed for user request: replaced external house/truck roles with hand-built lowpoly models in `src/models.js`.
+- Added `_createSwedishCottageHouse()` with Falu-red facade, white trims, pitched roof, chimney, porch, shutters, and small Swedish flag accent.
+- Added `_createLowpolyMovingTruck()` with articulated lowpoly moving-van silhouette (cabin + cargo box), wheels/hubs, bumper/lights/mirrors, accent stripes and side brand panels.
+- Added `_finalizeStaticRoleModel()` utility to normalize placement/scale/grounding and enforce shadow/color-space setup for static role models.
+- `createTruck()` and `createHouse()` now return stylized lowpoly custom models directly.
+- Ran regression suite: `npm run -s e2e:premium` PASS (`2026-02-26T14:17:22.988Z`, invalidMeshCount=0, consoleErrors=[]).
+- Captured focused validation renders: `test-results/truck-closeup-lowpoly.png` and `test-results/house-closeup-lowpoly.png`.
+- Follow-up option: if user wants stronger Scandinavian identity, add white picket fence modules and painted dala-horse icon decals on house/truck sides.
+- Sheep visual tweak requested: made sheep significantly whiter and fluffier.
+- In `src/models.js` `_polishExternalAnimalMaterials()`: reduced saturation and raised luminance floor for sheep fur (toward bright white), with slightly stronger emissive lift for readability.
+- In `_addSheepStylePass()`: added wool puff overlay (ring of white fabric-textured puff spheres + top fluff cloud) to create a fluffier silhouette in isometric gameplay.
+- Re-ran regression: `npm run -s e2e:premium` PASS (`2026-02-26T14:23:28.017Z`, invalidMeshCount=0, consoleErrors=[]).
+- Added targeted validation screenshot with forced nearby flock: `test-results/sheep-fluffy-whiter-showcase.png`.
+- March 7 pass for request "gå ingenom spel. förbättra så det blir snabbare snyggare och roligare" started.
+- In progress:
+  - Removed dynamic player shadow casting so the player uses the existing blob shadow only.
+  - Added objective-aware zone glow plumbing in `src/world.js`.
+  - Added plan for static shadow refreshes, deterministic hooks, faster pickups, and quick-delivery bonuses.
+- March 7 pass completed:
+  - Added static-shadow refresh flow + deterministic browser hooks in `src/main.js` (`window.advanceTime`, `window.render_game_to_text`).
+  - Lowered render cost by switching to cheaper shadow maps, smaller shadow-map sizes, and slightly lighter particle budgets.
+  - Added player focus ring, stronger active truck/house beacons, faster base movement, and more generous pickup radius.
+  - Added quick-delivery reward: fast truck→house runs grant `+2s` (`+3s` for gold items) and a visible `SNABBLEVERANS` banner.
+  - Capped regular sheep spawn pressure so endless gameplay does not ramp clutter as aggressively.
+  - Regression verification: `npm run -s e2e:premium` PASS with report date `2026-03-07T09:43:16.344Z`, `fps=10.7130`, `invalidMeshCount=0`, `consoleErrors=[]`.
+  - Manual browser verification with Playwright: `render_game_to_text` returned expected state before/after a forced quick delivery, and targeted screenshots were captured at `test-results/manual-player-focus.png` and `test-results/manual-quick-delivery.png`.
+- March 8 follow-up for request about missing level variety / sheep variety:
+  - Restored distinct level identity in `src/world.js` instead of relying mostly on palette swaps.
+  - Added per-level path palettes, per-level ground detail palettes, themed set dressing, and stronger tree variants:
+    spring flower patches, autumn leaf piles, winter snow drifts + snow-capped pines, night glow-mushrooms, ember fissures + dead trees.
+  - Added per-level ground textures in `src/textures.js` (`grassAutumn`, `snow`, `moonGrass`, `ash`) and switched the main ground surface by level.
+  - Tuned level 2–5 lighting in `src/visual-profile.js` so autumn/winter/night/finale read more clearly, with night/finale remaining themed but less crushed.
+  - Added sheep theme variants in `src/models.js` and wired them from `src/enemies.js`, so sheep now change wool tint/accessory palette by level instead of sharing one global look.
+  - Manual browser verification:
+    captured `test-results/level-1-after.png` through `test-results/level-5-after.png` after forcing level switches and themed sheep spawns.
+  - Regression verification:
+    `npm run -s e2e:premium` PASS with report date `2026-03-08T08:30:32.501Z`, `fps=10.6076`, `invalidMeshCount=0`, `consoleErrors=[]`.
+  - Note:
+    the develop-web-game Playwright client launched successfully in this workspace once `NODE_PATH` was pointed at the local `node_modules`, but it did not leave screenshot artifacts in the requested output directory, so the manual Playwright script + premium baseline remain the reliable verification trail here.
